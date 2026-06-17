@@ -1,0 +1,3359 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PlantAI — Student Plant Monitor</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+    :root {
+      --green:      #1db954;
+      --green-dark: #159a42;
+      --green-deep: #0d6e2e;
+      --green-pale: #e8f8ed;
+      --green-mid:  #d1f2dc;
+      --bg:         #f7f9fc;
+      --white:      #ffffff;
+      --border:     #e2e8f0;
+      --border2:    #cbd5e1;
+      --text:       #0f172a;
+      --text2:      #475569;
+      --text3:      #94a3b8;
+      --orange:     #f59e0b;
+      --red:        #ef4444;
+      --blue:       #3b82f6;
+      --shadow-sm:  0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow:     0 4px 16px rgba(0,0,0,0.08);
+      --shadow-lg:  0 12px 40px rgba(0,0,0,0.12);
+      --shadow-green: 0 8px 32px rgba(29,185,84,0.22);
+    }
+
+    /* ══════════ MODE SOMBRE ══════════ */
+    body.dark {
+      --bg:         #0f1117;
+      --white:      #1a1d27;
+      --border:     #2a2d3a;
+      --border2:    #3a3d4a;
+      --text:       #f1f5f9;
+      --text2:      #94a3b8;
+      --text3:      #475569;
+      --green-pale: #0d2e1a;
+      --green-mid:  #0a2015;
+      --shadow-sm:  0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+      --shadow:     0 4px 16px rgba(0,0,0,0.4);
+      --shadow-lg:  0 12px 40px rgba(0,0,0,0.5);
+    }
+    body.dark ::-webkit-scrollbar-track { background: #1a1d27; }
+    body.dark ::-webkit-scrollbar-thumb { background: #2a2d3a; }
+
+    /* Bouton dark mode toggle */
+    .btn-theme {
+      width: 38px; height: 38px; border-radius: 10px;
+      border: 1.5px solid var(--border); background: var(--white);
+      color: var(--text2); font-size: 1.05rem;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; flex-shrink: 0;
+    }
+    .btn-theme:hover { background: var(--green-pale); border-color: var(--green); transform: rotate(15deg) scale(1.05); }
+
+    /* Transition douce sur tout le body */
+    body { transition: background 0.3s, color 0.3s; }
+    .navbar, .chart-card, .metric-card, .hero-banner, .upload-zone,
+    .alert-modal, .note-modal, .result-card, .rc-body, .login-right,
+    .login-input, .note-textarea {
+      transition: background 0.3s, border-color 0.3s, color 0.3s, box-shadow 0.3s;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+    /* ══════════ TOP NAVBAR ══════════ */
+    .navbar {
+      background: var(--white);
+      border-bottom: 1.5px solid var(--border);
+      padding: 0 32px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 999;
+      box-shadow: var(--shadow-sm);
+    }
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .nav-logo {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      box-shadow: 0 2px 8px rgba(29,185,84,0.35);
+    }
+    .nav-title {
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+    .nav-subtitle { font-size: 0.65rem; color: var(--text3); margin-top: 1px; }
+
+    .nav-sep { flex: 1; }
+
+    .nav-tabs { display: flex; gap: 2px; }
+    .nav-tab {
+      padding: 7px 16px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text2);
+      transition: all 0.18s;
+      border: none;
+      background: none;
+    }
+    .nav-tab:hover  { background: var(--green-pale); color: var(--green-dark); }
+    .nav-tab.active { background: linear-gradient(135deg, var(--green), var(--green-dark)); color: #fff; box-shadow: 0 2px 10px rgba(29,185,84,0.3); }
+
+    .nav-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--green-pale);
+      border: 1.5px solid #a7f3c3;
+      border-radius: 20px;
+      padding: 5px 13px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--green-dark);
+      margin-left: 8px;
+    }
+    .pulse-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(29,185,84,0.4); }
+      50%      { box-shadow: 0 0 0 5px rgba(29,185,84,0); }
+    }
+
+    .nav-time {
+      font-size: 0.72rem;
+      color: var(--text3);
+      font-weight: 500;
+      margin-left: 4px;
+    }
+
+    .btn-pdf {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 8px;
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
+      color: #fff; border: none; cursor: pointer;
+      font-size: 0.78rem; font-weight: 700;
+      transition: all 0.2s; white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(239,68,68,0.3);
+    }
+    .btn-pdf:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(239,68,68,0.4); }
+    .btn-pdf:active { transform: translateY(0); }
+    .btn-pdf:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* Toast notification */
+    .toast {
+      position: fixed; bottom: 28px; right: 28px; z-index: 9999;
+      background: var(--text); color: #fff;
+      padding: 12px 20px; border-radius: 12px;
+      font-size: 0.82rem; font-weight: 600;
+      display: flex; align-items: center; gap: 8px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      animation: slideUp 0.3s ease;
+    }
+    .toast.success { background: #16a34a; }
+    .toast.error   { background: #dc2626; }
+    @keyframes slideUp { from { opacity:0; transform: translateY(20px); } to { opacity:1; transform: translateY(0); } }
+
+    /* ── Alerte critique ── */
+    .alert-overlay {
+      position: fixed; inset: 0; z-index: 10000;
+      background: rgba(0,0,0,0.55); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+    .alert-modal {
+      background: #fff; border-radius: 20px; padding: 0;
+      width: 420px; max-width: 92vw; overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.25);
+      animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes popIn { from{opacity:0;transform:scale(0.85)} to{opacity:1;transform:scale(1)} }
+
+    .alert-header {
+      padding: 22px 24px 18px;
+      display: flex; align-items: flex-start; gap: 14px;
+    }
+    .alert-header.critical { background: linear-gradient(135deg,#ef4444,#b91c1c); }
+    .alert-header.sick     { background: linear-gradient(135deg,#f59e0b,#d97706); }
+
+    .alert-icon-wrap {
+      width: 52px; height: 52px; border-radius: 14px;
+      background: rgba(255,255,255,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.8rem; flex-shrink: 0;
+      animation: shake 0.5s ease 0.3s;
+    }
+    @keyframes shake {
+      0%,100%{transform:rotate(0)} 20%{transform:rotate(-8deg)} 40%{transform:rotate(8deg)}
+      60%{transform:rotate(-5deg)} 80%{transform:rotate(5deg)}
+    }
+    .alert-header-text h3 { font-size: 1.1rem; font-weight: 800; color: #fff; margin-bottom: 4px; }
+    .alert-header-text p  { font-size: 0.8rem; color: rgba(255,255,255,0.8); line-height: 1.4; }
+
+    .alert-body { padding: 20px 24px; }
+    .alert-disease {
+      font-size: 1.3rem; font-weight: 900; color: #0f172a;
+      margin-bottom: 6px; display: flex; align-items: center; gap: 8px;
+    }
+    .alert-conf {
+      font-size: 0.82rem; color: #64748b; margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .alert-conf-bar { flex:1; height: 6px; background: #f1f5f9; border-radius: 10px; overflow: hidden; }
+    .alert-conf-fill { height: 100%; border-radius: 10px; transition: width 0.8s; }
+    .alert-conseil {
+      background: #fef9c3; border-left: 3px solid #f59e0b;
+      border-radius: 0 8px 8px 0; padding: 10px 14px;
+      font-size: 0.8rem; color: #78350f; line-height: 1.5; margin-bottom: 18px;
+    }
+    .alert-conseil.critical { background: #fee2e2; border-color: #ef4444; color: #7f1d1d; }
+
+    .alert-actions { display: flex; gap: 10px; }
+    .alert-btn-dismiss {
+      flex: 1; padding: 10px; border-radius: 10px; border: 1.5px solid #e2e8f0;
+      background: #fff; color: #475569; font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; transition: all 0.18s;
+    }
+    .alert-btn-dismiss:hover { background: #f8fafc; border-color: #cbd5e1; }
+    .alert-btn-view {
+      flex: 1; padding: 10px; border-radius: 10px; border: none;
+      background: linear-gradient(135deg,#1db954,#16a34a);
+      color: #fff; font-size: 0.85rem; font-weight: 700;
+      cursor: pointer; transition: all 0.18s;
+      box-shadow: 0 2px 8px rgba(29,185,84,0.3);
+    }
+    .alert-btn-view:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(29,185,84,0.4); }
+
+    /* Badge alerte navbar */
+    .alert-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #ef4444; color: #fff;
+      font-size: 0.65rem; font-weight: 800;
+      margin-left: 6px; animation: pulse 1.5s infinite;
+    }
+
+    /* Barre d'alerte sticky */
+    .alert-bar {
+      background: linear-gradient(135deg,#ef4444,#b91c1c);
+      color: #fff; padding: 9px 28px;
+      display: flex; align-items: center; gap: 10px;
+      font-size: 0.82rem; font-weight: 600;
+      animation: slideDown 0.3s ease;
+    }
+    @keyframes slideDown { from{opacity:0;transform:translateY(-100%)} to{opacity:1;transform:translateY(0)} }
+    .alert-bar-close {
+      margin-left: auto; background: rgba(255,255,255,0.2); border: none;
+      color: #fff; border-radius: 6px; padding: 2px 8px; cursor: pointer;
+      font-size: 0.78rem; font-weight: 700;
+    }
+
+    /* ══════════ LAYOUT ══════════ */
+    .page { max-width: 1400px; margin: 0 auto; padding: 28px 32px; }
+
+    /* ══════════ HERO SECTION — Image style ══════════ */
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    /* Grande bannière verte — Plant Health */
+    .hero-banner {
+      border-radius: 18px;
+      padding: 28px 30px;
+      position: relative;
+      overflow: hidden;
+      cursor: default;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .hero-banner:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+    /* Quand hero-banner est dans un TiltCard, le tilt gère tout */
+    .tilt-wrap .hero-banner { transition: none; }
+    .tilt-wrap .hero-banner:hover { transform: none; box-shadow: none; }
+    .hero-banner.green  { background: linear-gradient(135deg, #1db954, #0d6e2e); box-shadow: var(--shadow-green); }
+    .hero-banner.teal   { background: linear-gradient(135deg, #0ea5e9, #0369a1); box-shadow: 0 8px 32px rgba(14,165,233,0.22); }
+    .hero-banner.orange { background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 8px 32px rgba(245,158,11,0.22); }
+    .hero-banner.red    { background: linear-gradient(135deg, #ef4444, #b91c1c); box-shadow: 0 8px 32px rgba(239,68,68,0.22); }
+
+    .hb-bg-circle {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.07);
+    }
+    .hb-bg-circle.c1 { width: 160px; height: 160px; top: -50px; right: -40px; }
+    .hb-bg-circle.c2 { width: 90px;  height: 90px;  bottom: -25px; right: 60px; }
+
+    .hb-label {
+      font-size: 0.7rem;
+      font-weight: 800;
+      color: rgba(255,255,255,0.7);
+      text-transform: uppercase;
+      letter-spacing: 1.8px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .hb-value {
+      font-size: 2.1rem;
+      font-weight: 900;
+      color: #fff;
+      line-height: 1.1;
+      margin-bottom: 6px;
+    }
+    .hb-sub {
+      font-size: 0.82rem;
+      color: rgba(255,255,255,0.75);
+      font-weight: 500;
+    }
+    .hb-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #fff;
+      margin-top: 12px;
+    }
+    .hb-conf {
+      position: absolute;
+      top: 24px;
+      right: 28px;
+      text-align: right;
+    }
+    .hb-conf-val   { font-size: 2.6rem; font-weight: 900; color: #fff; line-height: 1; }
+    .hb-conf-label { font-size: 0.7rem; color: rgba(255,255,255,0.65); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+
+    /* ══════════ SMALL METRICS ROW ══════════ */
+    .metrics-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .metric-card {
+      background: var(--white);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s;
+      cursor: default;
+    }
+    .metric-card:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+    .metric-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; flex-shrink: 0;
+    }
+    .metric-val   { font-size: 1.5rem; font-weight: 900; line-height: 1; }
+    .metric-label { font-size: 0.72rem; color: var(--text3); margin-top: 3px; font-weight: 500; }
+    .metric-trend { font-size: 0.68rem; font-weight: 700; margin-top: 4px; }
+    .trend-up   { color: var(--green); }
+    .trend-down { color: var(--red); }
+    .trend-flat { color: var(--text3); }
+
+    /* ══════════ CHARTS ROW — Image sparklines ══════════ */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .chart-card {
+      background: var(--white);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 18px 14px;
+      box-shadow: var(--shadow-sm);
+    }
+    .cc-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2px; }
+    .cc-title { font-size: 0.82rem; font-weight: 700; color: var(--text); }
+    .cc-period {
+      font-size: 0.65rem;
+      color: var(--text3);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2px 8px;
+      font-weight: 600;
+    }
+    .cc-val { font-size: 1.6rem; font-weight: 900; color: var(--text); line-height: 1; margin-bottom: 2px; }
+    .cc-sub { font-size: 0.7rem; color: var(--text3); margin-bottom: 12px; }
+    .sparkline-wrap { height: 70px; position: relative; }
+    .chart-wrap-md { height: 190px; position: relative; }
+
+    /* ══════════ MAIN BOTTOM GRID ══════════ */
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .bottom-grid .span2 { grid-column: span 2; }
+
+    /* ══════════ UPLOAD ══════════ */
+    .upload-zone {
+      border: 2px dashed #b7e5c9;
+      border-radius: 12px;
+      padding: 24px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--green-pale);
+      position: relative;
+    }
+    .upload-zone:hover, .upload-zone.over {
+      border-color: var(--green);
+      background: var(--green-mid);
+      box-shadow: 0 0 0 4px rgba(29,185,84,0.08);
+    }
+    .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .uz-icon { font-size: 2rem; margin-bottom: 6px; }
+    .uz-text  { font-size: 0.82rem; color: var(--text2); line-height: 1.6; }
+    .uz-text strong { color: var(--green-dark); }
+    .preview-img { width: 100%; max-height: 160px; object-fit: cover; border-radius: 10px; margin-top: 10px; border: 2px solid #b7e5c9; }
+
+    .btn-primary {
+      width: 100%; margin-top: 12px; padding: 11px 16px;
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      color: #fff; border: none; border-radius: 10px;
+      font-size: 0.88rem; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: all 0.2s;
+      box-shadow: 0 3px 12px rgba(29,185,84,0.3);
+      letter-spacing: 0.3px;
+    }
+    .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--shadow-green); }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+    .spinner { width: 16px; height: 16px; border: 2.5px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ══════════ RESULT ══════════ */
+    .result-idle { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 160px; color: var(--text3); gap: 6px; font-size: 0.8rem; text-align: center; }
+    .result-card { border-radius: 12px; overflow: hidden; border: 1.5px solid var(--border); }
+    .rc-header { padding: 14px 16px; display: flex; align-items: center; gap: 10px; }
+    .rc-header.healthy  { background: linear-gradient(135deg,#1db954,#0d6e2e); }
+    .rc-header.sick     { background: linear-gradient(135deg,#f59e0b,#d97706); }
+    .rc-header.critical { background: linear-gradient(135deg,#ef4444,#b91c1c); }
+    .rc-header-name { font-size: 1rem; font-weight: 800; color: #fff; }
+    .rc-body { padding: 14px 16px; background: #fff; }
+    .rc-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.8rem; }
+    .rc-lbl { color: var(--text3); font-weight: 500; }
+    .rc-val { font-weight: 700; color: var(--text); }
+    .prog { flex: 1; margin: 0 10px; height: 6px; background: #f1f5f9; border-radius: 10px; overflow: hidden; }
+    .prog-fill { height: 100%; border-radius: 10px; transition: width 1s ease; }
+    .pill { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; }
+    .pill-healthy  { background: var(--green-pale); color: var(--green-dark); }
+    .pill-sick     { background: #fef3c7; color: #92400e; }
+    .pill-critical { background: #fee2e2; color: #991b1b; }
+    .rc-advice { margin-top: 10px; background: var(--green-pale); border-left: 3px solid var(--green); border-radius: 0 8px 8px 0; padding: 9px 12px; font-size: 0.76rem; color: var(--green-deep); line-height: 1.5; }
+
+    /* ══════════ ANNOTATIONS ══════════ */
+    .note-modal-overlay {
+      position: fixed; inset: 0; z-index: 10000;
+      background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      animation: fadeIn 0.2s ease;
+    }
+    .note-modal {
+      background: #fff; border-radius: 18px; width: 460px; max-width: 92vw;
+      overflow: hidden; box-shadow: 0 24px 64px rgba(0,0,0,0.2);
+      animation: popIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .note-modal-head {
+      padding: 18px 22px 14px;
+      border-bottom: 1.5px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .note-modal-title { font-size: 0.95rem; font-weight: 800; color: var(--text); }
+    .note-modal-sub   { font-size: 0.73rem; color: var(--text3); margin-top: 2px; }
+    .note-modal-close {
+      width: 28px; height: 28px; border-radius: 8px; border: 1.5px solid var(--border);
+      background: #fff; cursor: pointer; font-size: 0.9rem; color: var(--text2);
+      display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+    }
+    .note-modal-close:hover { background: #fee2e2; border-color: #fca5a5; color: #dc2626; }
+    .note-modal-body { padding: 18px 22px; }
+    .note-disease-info {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+      background: var(--bg); border-radius: 10px; padding: 10px 14px;
+    }
+    .note-disease-icon { font-size: 1.3rem; }
+    .note-disease-name { font-weight: 700; color: var(--text); font-size: 0.88rem; }
+    .note-disease-date { font-size: 0.72rem; color: var(--text3); margin-top: 2px; }
+    .note-textarea {
+      width: 100%; min-height: 110px; padding: 12px 14px;
+      border: 1.5px solid var(--border); border-radius: 10px;
+      font-size: 0.85rem; font-family: 'Inter', sans-serif;
+      color: var(--text); resize: vertical; transition: border-color 0.18s;
+      outline: none; background: #fff;
+    }
+    .note-textarea:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(29,185,84,0.1); }
+    .note-textarea::placeholder { color: var(--text3); }
+    .note-char-count { text-align: right; font-size: 0.68rem; color: var(--text3); margin-top: 4px; }
+    .note-actions { display: flex; gap: 10px; margin-top: 14px; }
+    .note-btn-cancel {
+      flex:1; padding: 10px; border-radius: 10px; border: 1.5px solid var(--border);
+      background: #fff; color: var(--text2); font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .note-btn-cancel:hover { background: var(--bg); }
+    .note-btn-save {
+      flex:1; padding: 10px; border-radius: 10px; border: none;
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      color: #fff; font-size: 0.85rem; font-weight: 700; cursor: pointer;
+      transition: all 0.18s; box-shadow: 0 2px 8px rgba(29,185,84,0.3);
+    }
+    .note-btn-save:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(29,185,84,0.4); }
+
+    /* Note inline dans le tableau */
+    .note-inline {
+      font-size: 0.72rem; color: var(--text2); margin-top: 4px;
+      background: #fef9c3; border-radius: 5px; padding: 3px 7px;
+      border-left: 2px solid var(--orange); max-width: 200px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .btn-note {
+      padding: 3px 9px; border-radius: 7px; border: 1.5px solid var(--border);
+      background: #fff; color: var(--text3); font-size: 0.7rem; font-weight: 600;
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .btn-note:hover { background: var(--green-pale); border-color: var(--green); color: var(--green-dark); }
+    .btn-note.has-note { background: #fef9c3; border-color: #f59e0b; color: #92400e; }
+
+    /* ══════════ TABLE ══════════ */
+    .tbl-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.79rem; }
+    thead th { background: var(--bg); color: var(--text3); font-weight: 700; padding: 8px 12px; text-align: left; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 1.5px solid var(--border); }
+    tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.12s; }
+    tbody tr:hover { background: var(--green-pale); }
+    tbody td { padding: 9px 12px; color: var(--text2); }
+    .td-bold { color: var(--text); font-weight: 700; }
+
+    /* ══════════ DISEASE LIST ══════════ */
+    .dl-item { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid #f1f5f9; }
+    .dl-item:last-child { border-bottom: none; }
+    .dl-dot  { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .dl-name { flex: 1; font-size: 0.78rem; color: var(--text2); font-weight: 500; }
+    .dl-bar-bg { width: 64px; height: 5px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+    .dl-bar    { height: 100%; border-radius: 4px; transition: width 0.7s; }
+    .dl-cnt    { font-size: 0.76rem; font-weight: 800; color: var(--text); min-width: 16px; text-align: right; }
+
+    /* ══════════ SENSOR BARS ══════════ */
+    .sensor-row { margin-bottom: 14px; }
+    .sensor-row:last-child { margin-bottom: 0; }
+    .sensor-head { display: flex; justify-content: space-between; margin-bottom: 5px; }
+    .sensor-name { font-size: 0.76rem; color: var(--text2); font-weight: 600; display: flex; align-items: center; gap: 5px; }
+    .sensor-val  { font-size: 0.8rem; font-weight: 800; }
+    .sensor-bar  { height: 7px; background: #f1f5f9; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+    .sensor-fill { height: 100%; border-radius: 10px; transition: width 0.9s ease; }
+
+    /* ══════════ EMPTY ══════════ */
+    .empty-box { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; color: var(--text3); text-align: center; }
+    .empty-box .e-icon { font-size: 2.8rem; opacity: 0.35; margin-bottom: 10px; }
+    .e-link { color: var(--green-dark); cursor: pointer; font-weight: 700; }
+
+    /* ══════════ SECTION TITLE ══════════ */
+    .section-title { font-size: 0.7rem; font-weight: 800; color: var(--text3); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    @media (max-width: 1200px) { .charts-row { grid-template-columns: 1fr 1fr; } .hero-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 900px)  { .metrics-row { grid-template-columns: 1fr 1fr; } .bottom-grid { grid-template-columns: 1fr; } .bottom-grid .span2 { grid-column: 1; } }
+    @media (max-width: 600px)  { .hero-grid { grid-template-columns: 1fr; } .page { padding: 12px; } .navbar { padding: 0 12px; } }
+
+    /* ══════════ RESPONSIVE MOBILE COMPLET ══════════ */
+
+    /* Hamburger button */
+    .nav-hamburger {
+      display: none; flex-direction: column; gap: 5px;
+      background: none; border: none; cursor: pointer; padding: 6px;
+    }
+    .nav-hamburger span {
+      display: block; width: 22px; height: 2.5px; border-radius: 2px;
+      background: var(--text2); transition: all 0.3s;
+    }
+    .nav-hamburger.open span:nth-child(1) { transform: translateY(7.5px) rotate(45deg); }
+    .nav-hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+    .nav-hamburger.open span:nth-child(3) { transform: translateY(-7.5px) rotate(-45deg); }
+
+    /* Menu mobile drawer */
+    .mobile-menu {
+      display: none;
+      position: fixed; top: 64px; left: 0; right: 0; z-index: 998;
+      background: var(--white); border-bottom: 2px solid var(--border);
+      box-shadow: var(--shadow-lg);
+      padding: 12px 16px 16px;
+      animation: slideDown 0.25s ease;
+      flex-direction: column; gap: 6px;
+    }
+    .mobile-menu.open { display: flex; }
+    .mobile-tab {
+      padding: 11px 16px; border-radius: 10px; border: none;
+      background: none; font-size: 0.9rem; font-weight: 600;
+      color: var(--text2); cursor: pointer; text-align: left;
+      transition: all 0.15s; display: flex; align-items: center; gap: 10px;
+    }
+    .mobile-tab:hover  { background: var(--green-pale); color: var(--green-dark); }
+    .mobile-tab.active { background: linear-gradient(135deg,var(--green),var(--green-dark)); color:#fff; }
+    .mobile-menu-sep { height: 1px; background: var(--border); margin: 4px 0; }
+    .mobile-menu-row { display: flex; gap: 8px; }
+    .mobile-menu-row .mobile-tab { flex: 1; justify-content: center; }
+
+    @media (max-width: 768px) {
+      /* Cache les tabs desktop, montre le hamburger */
+      .nav-tabs         { display: none !important; }
+      .nav-badge        { display: none !important; }
+      .nav-time         { display: none !important; }
+      .btn-pdf          { display: none !important; }
+      .btn-theme        { display: none !important; }
+      .nav-profile-name, .nav-profile-role, .nav-chevron { display: none !important; }
+      .nav-profile-btn  { padding: 4px; border-radius: 50%; }
+      .nav-hamburger    { display: flex; }
+
+      /* Page layout */
+      .page { padding: 12px; }
+      .hero-grid { grid-template-columns: 1fr !important; }
+      .metrics-row { grid-template-columns: 1fr 1fr; }
+      .charts-row  { grid-template-columns: 1fr !important; }
+      .bottom-grid { grid-template-columns: 1fr !important; }
+      .bottom-grid .span2 { grid-column: 1; }
+      .stats-kpi-row { grid-template-columns: 1fr 1fr; }
+      .stats-grid-top, .stats-grid-bot { grid-template-columns: 1fr !important; }
+
+      /* Cartes héro : réduire padding */
+      .hero-banner { padding: 18px 18px; }
+      .hb-value    { font-size: 1.6rem; }
+      .hb-conf-val { font-size: 2rem; }
+
+      /* Navbar */
+      .navbar { height: 56px; padding: 0 14px; gap: 10px; }
+      .nav-logo { width: 30px; height: 30px; font-size: 0.9rem; }
+      .nav-title { font-size: 0.7rem; }
+      .nav-subtitle { display: none; }
+
+      /* Profile dropdown — plein écran sur mobile */
+      .profile-dropdown { left: 8px; right: 8px; width: auto; }
+
+      /* Table scroll horizontal */
+      .tbl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      table { min-width: 580px; }
+
+      /* Charts hauteur réduite */
+      .chart-wrap-md { height: 160px; }
+      .sparkline-wrap { height: 55px; }
+
+      /* Upload zone */
+      .upload-zone { padding: 18px 12px; }
+
+      /* Alert modal */
+      .alert-modal { width: 95vw; }
+
+      /* Stats KPI text */
+      .stats-kpi-val { font-size: 1.7rem; }
+    }
+
+    @media (max-width: 420px) {
+      .metrics-row  { grid-template-columns: 1fr; }
+      .stats-kpi-row { grid-template-columns: 1fr; }
+      .hb-value { font-size: 1.4rem; }
+      .metric-val { font-size: 1.3rem; }
+    }
+
+    /* ══════════ SPLASH SCREEN ══════════ */
+    .splash {
+      position: fixed; inset: 0; z-index: 99999;
+      background: linear-gradient(160deg, #0d6e2e 0%, #1db954 55%, #16a34a 100%);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    .splash.fade-out {
+      animation: splashFadeOut 0.7s ease forwards;
+    }
+    @keyframes splashFadeOut {
+      from { opacity:1; transform: scale(1); }
+      to   { opacity:0; transform: scale(1.04); }
+    }
+
+    /* Cercles décoratifs */
+    .splash-circle {
+      position: absolute; border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      animation: splashPulse 3s ease-in-out infinite;
+    }
+    .splash-circle.c1 { width:500px; height:500px; top:-120px; right:-120px; animation-delay:0s; }
+    .splash-circle.c2 { width:320px; height:320px; bottom:-80px; left:-80px; animation-delay:0.5s; }
+    .splash-circle.c3 { width:200px; height:200px; top:60px; left:60px; animation-delay:1s; }
+    @keyframes splashPulse {
+      0%,100% { transform: scale(1); opacity:0.6; }
+      50%      { transform: scale(1.08); opacity:1; }
+    }
+
+    /* Logo central */
+    .splash-logo {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column; align-items: center; gap: 20px;
+      animation: splashLogoIn 0.8s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    }
+    @keyframes splashLogoIn {
+      from { opacity:0; transform: scale(0.5) translateY(30px); }
+      to   { opacity:1; transform: scale(1) translateY(0); }
+    }
+    .splash-icon-wrap {
+      width: 110px; height: 110px; border-radius: 28px;
+      background: rgba(255,255,255,0.18);
+      border: 2px solid rgba(255,255,255,0.35);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 3.8rem;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.3);
+      animation: splashIconFloat 2s ease-in-out infinite 0.8s;
+    }
+    @keyframes splashIconFloat {
+      0%,100% { transform: translateY(0) rotate(0deg); }
+      50%      { transform: translateY(-10px) rotate(3deg); }
+    }
+    .splash-title {
+      font-size: 2.8rem; font-weight: 900; color: #fff;
+      letter-spacing: -1px; text-align: center;
+      text-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      animation: splashTextIn 0.6s ease 0.3s both;
+    }
+    .splash-subtitle {
+      font-size: 1rem; color: rgba(255,255,255,0.8); font-weight: 500;
+      text-align: center; letter-spacing: 0.5px;
+      animation: splashTextIn 0.6s ease 0.5s both;
+    }
+    @keyframes splashTextIn {
+      from { opacity:0; transform: translateY(15px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+
+    /* Barre de chargement */
+    .splash-bar-wrap {
+      position: relative; z-index: 1; margin-top: 40px;
+      width: 220px;
+      animation: splashTextIn 0.6s ease 0.7s both;
+    }
+    .splash-bar-track {
+      height: 5px; background: rgba(255,255,255,0.2);
+      border-radius: 10px; overflow: hidden;
+    }
+    .splash-bar-fill {
+      height: 100%; border-radius: 10px;
+      background: rgba(255,255,255,0.9);
+      animation: splashBarGrow 2.2s cubic-bezier(0.4,0,0.2,1) 0.3s forwards;
+      width: 0%;
+    }
+    @keyframes splashBarGrow {
+      0%   { width:0%; }
+      40%  { width:55%; }
+      70%  { width:80%; }
+      90%  { width:95%; }
+      100% { width:100%; }
+    }
+    .splash-status {
+      margin-top: 10px; font-size: 0.75rem; color: rgba(255,255,255,0.65);
+      text-align: center; font-weight: 500; height: 18px;
+      animation: splashTextIn 0.6s ease 0.7s both;
+    }
+
+    /* Tags techno en bas */
+    .splash-tags {
+      position: relative; z-index: 1; margin-top: 32px;
+      display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+      animation: splashTextIn 0.6s ease 0.9s both;
+    }
+    .splash-tag {
+      padding: 5px 14px; border-radius: 20px;
+      background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+      font-size: 0.72rem; font-weight: 700; color: #fff;
+      letter-spacing: 0.5px;
+    }
+
+    /* ══════════ TILT 3D CARDS ══════════ */
+    .tilt-wrap {
+      transform-style: preserve-3d;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+      will-change: transform;
+      position: relative;
+    }
+    .tilt-wrap:hover { z-index: 10; }
+    .tilt-glare {
+      position: absolute; inset: 0; border-radius: inherit;
+      pointer-events: none; overflow: hidden; z-index: 2;
+      border-radius: 18px;
+    }
+    .tilt-glare::after {
+      content: '';
+      position: absolute; inset: -50%;
+      background: radial-gradient(circle at var(--mx,50%) var(--my,50%),
+        rgba(255,255,255,0.18) 0%,
+        rgba(255,255,255,0.06) 35%,
+        transparent 65%);
+      transition: opacity 0.3s;
+      opacity: 0;
+    }
+    .tilt-wrap:hover .tilt-glare::after { opacity: 1; }
+
+    /* ══════════ DARK MODE OVERRIDES ══════════ */
+    body.dark thead th        { background: #13161f; color: var(--text3); border-bottom-color: var(--border); }
+    body.dark tbody tr:hover  { background: #1a1d27; }
+    body.dark tbody tr        { border-bottom-color: var(--border); }
+    body.dark .upload-zone    { background: #13161f; border-color: #2a3a2e; }
+    body.dark .upload-zone:hover, body.dark .upload-zone.over { background: #0d2e1a; border-color: var(--green); }
+    body.dark .login-input    { background: #13161f; color: var(--text); border-color: var(--border); }
+    body.dark .login-input:focus { border-color: var(--green); }
+    body.dark .note-textarea  { background: #13161f; color: var(--text); border-color: var(--border); }
+    body.dark .alert-modal    { background: #1a1d27; }
+    body.dark .alert-body     { background: #1a1d27; }
+    body.dark .alert-btn-dismiss { background: #13161f; border-color: var(--border); color: var(--text2); }
+    body.dark .note-modal     { background: #1a1d27; }
+    body.dark .note-modal-head{ border-bottom-color: var(--border); }
+    body.dark .note-disease-info { background: #13161f; }
+    body.dark .note-btn-cancel { background: #13161f; border-color: var(--border); color: var(--text2); }
+    body.dark .rc-body        { background: #1a1d27; }
+    body.dark .result-card    { border-color: var(--border); }
+    body.dark .prog           { background: #2a2d3a; }
+    body.dark .sensor-bar     { background: #2a2d3a; border-color: var(--border); }
+    body.dark .dl-bar-bg      { background: #2a2d3a; }
+    body.dark .cc-period      { background: #13161f; border-color: var(--border); }
+    body.dark .nav-tab:hover  { background: #0d2e1a; }
+    body.dark .alert-bar-close { background: rgba(255,255,255,0.15); }
+    body.dark .note-inline    { background: #2a2010; border-left-color: var(--orange); }
+    body.dark .btn-note       { background: #13161f; border-color: var(--border); color: var(--text3); }
+    body.dark .btn-note.has-note { background: #2a2010; border-color: #92400e; color: #fbbf24; }
+    body.dark .rc-advice      { background: #0d2e1a; border-left-color: var(--green); color: #6ee7a0; }
+    body.dark .login-hint     { background: #0d2e1a; border-color: #1a4a2a; color: #6ee7a0; }
+    body.dark .login-remember { color: var(--text2); }
+    body.dark .login-footer   { color: var(--text3); }
+    body.dark .login-logo-text h1 { color: var(--text); }
+    body.dark .login-sub, body.dark .login-title { color: var(--text); }
+
+    /* ══════════ STATISTIQUES ══════════ */
+    .stats-kpi-row {
+      display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 20px;
+    }
+    .stats-kpi {
+      background: var(--white); border: 1.5px solid var(--border);
+      border-radius: 16px; padding: 20px 22px;
+      box-shadow: var(--shadow-sm); transition: all 0.2s; position: relative; overflow: hidden;
+    }
+    .stats-kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+    .stats-kpi-accent { position: absolute; top:0; left:0; right:0; height:4px; border-radius: 16px 16px 0 0; }
+    .stats-kpi-icon { font-size: 1.6rem; margin-bottom: 10px; }
+    .stats-kpi-val  { font-size: 2.2rem; font-weight: 900; line-height: 1; color: var(--text); }
+    .stats-kpi-label{ font-size: 0.72rem; color: var(--text3); margin-top: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; }
+    .stats-kpi-sub  { font-size: 0.72rem; font-weight: 700; margin-top: 8px; }
+
+    .stats-grid-top {
+      display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; margin-bottom: 14px;
+    }
+    .stats-grid-bot {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 20px;
+    }
+
+    /* Barre de maladie dans le classement */
+    .disease-rank-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 9px 0; border-bottom: 1px solid var(--border);
+    }
+    .disease-rank-item:last-child { border-bottom: none; }
+    .rank-num {
+      width: 22px; height: 22px; border-radius: 7px;
+      background: var(--bg); color: var(--text3);
+      font-size: 0.68rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .rank-num.top { background: linear-gradient(135deg,#f59e0b,#d97706); color:#fff; }
+    .rank-name { flex:1; font-size: 0.8rem; font-weight: 600; color: var(--text); }
+    .rank-bar-bg { width: 80px; height: 6px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+    .rank-bar-fill { height: 100%; border-radius: 4px; transition: width 0.8s ease; }
+    .rank-count { font-size: 0.78rem; font-weight: 800; min-width: 28px; text-align: right; }
+
+    /* Indicateur de santé global */
+    .health-score-wrap {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 20px 0; gap: 6px;
+    }
+    .health-score-val { font-size: 3.5rem; font-weight: 900; line-height: 1; }
+    .health-score-label { font-size: 0.78rem; color: var(--text3); font-weight: 600; }
+    .health-score-ring {
+      width: 120px; height: 120px; position: relative; margin: 10px 0;
+    }
+    .health-score-ring svg { transform: rotate(-90deg); }
+    .ring-bg   { fill: none; stroke: var(--border); stroke-width: 10; }
+    .ring-fill { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 1s ease; }
+
+    .stats-tip {
+      background: var(--green-pale); border: 1px solid #a7f3c3; border-radius: 10px;
+      padding: 12px 16px; font-size: 0.78rem; color: var(--green-deep); line-height: 1.6;
+      display: flex; align-items: flex-start; gap: 10px; margin-top: 14px;
+    }
+    body.dark .stats-tip { background: #0d2e1a; border-color: #1a4a2a; color: #6ee7a0; }
+
+    @media (max-width: 900px) {
+      .stats-kpi-row { grid-template-columns: 1fr 1fr; }
+      .stats-grid-top, .stats-grid-bot { grid-template-columns: 1fr; }
+    }
+
+    /* ══════════ PROFIL UTILISATEUR ══════════ */
+    .nav-profile {
+      position: relative;
+    }
+    .nav-profile-btn {
+      display: flex; align-items: center; gap: 9px;
+      padding: 5px 12px 5px 6px;
+      border: 1.5px solid var(--border); border-radius: 24px;
+      background: var(--white); cursor: pointer;
+      transition: all 0.2s; white-space: nowrap;
+    }
+    .nav-profile-btn:hover { border-color: var(--green); box-shadow: 0 0 0 3px rgba(29,185,84,0.1); }
+    .nav-avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.82rem; font-weight: 800; color: #fff;
+      flex-shrink: 0; box-shadow: 0 2px 6px rgba(29,185,84,0.3);
+    }
+    .nav-profile-name { font-size: 0.78rem; font-weight: 700; color: var(--text); }
+    .nav-profile-role { font-size: 0.65rem; color: var(--text3); }
+    .nav-chevron { font-size: 0.6rem; color: var(--text3); margin-left: 2px; transition: transform 0.2s; }
+    .nav-chevron.open { transform: rotate(180deg); }
+
+    /* Dropdown menu */
+    .profile-dropdown {
+      position: absolute; top: calc(100% + 10px); right: 0;
+      width: 260px; background: var(--white);
+      border: 1.5px solid var(--border); border-radius: 16px;
+      box-shadow: var(--shadow-lg); z-index: 5000;
+      animation: dropIn 0.2s cubic-bezier(0.34,1.3,0.64,1);
+      overflow: hidden;
+    }
+    @keyframes dropIn { from{opacity:0;transform:translateY(-10px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+
+    .pd-header {
+      padding: 18px 18px 14px;
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      display: flex; align-items: center; gap: 13px;
+    }
+    .pd-avatar-lg {
+      width: 46px; height: 46px; border-radius: 14px;
+      background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.35);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; font-weight: 900; color: #fff; flex-shrink: 0;
+    }
+    .pd-name  { font-size: 0.9rem; font-weight: 800; color: #fff; }
+    .pd-email { font-size: 0.7rem; color: rgba(255,255,255,0.75); margin-top: 2px; word-break: break-all; }
+    .pd-role-badge {
+      display: inline-block; margin-top: 5px;
+      background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 20px; padding: 2px 10px; font-size: 0.65rem; font-weight: 700; color: #fff;
+    }
+
+    .pd-body { padding: 10px 8px; }
+    .pd-item {
+      display: flex; align-items: center; gap: 11px;
+      padding: 9px 10px; border-radius: 10px;
+      font-size: 0.8rem; color: var(--text2); font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .pd-item:hover { background: var(--green-pale); color: var(--green-dark); }
+    .pd-item-icon { font-size: 1rem; width: 22px; text-align: center; flex-shrink: 0; }
+    .pd-sep { height: 1px; background: var(--border); margin: 6px 10px; }
+    .pd-item.danger:hover { background: #fee2e2; color: #dc2626; }
+
+    .pd-stats {
+      margin: 0 10px 8px; padding: 10px 12px;
+      background: var(--bg); border-radius: 10px; border: 1px solid var(--border);
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; text-align: center;
+    }
+    .pd-stat-val   { font-size: 1.1rem; font-weight: 900; color: var(--text); }
+    .pd-stat-label { font-size: 0.62rem; color: var(--text3); margin-top: 1px; }
+
+    /* ══════════ LOGIN PAGE ══════════ */
+    .login-page {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: var(--bg);
+    }
+    @media (max-width: 768px) { .login-page { grid-template-columns: 1fr; } .login-left { display: none !important; } }
+
+    /* Panneau gauche illustré */
+    .login-left {
+      background: linear-gradient(160deg, #0d6e2e 0%, #1db954 50%, #16a34a 100%);
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      padding: 48px; position: relative; overflow: hidden;
+    }
+    .login-left::before {
+      content: ''; position: absolute; inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    .login-left-circle1 {
+      position: absolute; width: 380px; height: 380px; border-radius: 50%;
+      background: rgba(255,255,255,0.06); top: -80px; right: -80px;
+    }
+    .login-left-circle2 {
+      position: absolute; width: 250px; height: 250px; border-radius: 50%;
+      background: rgba(255,255,255,0.05); bottom: -60px; left: -60px;
+    }
+    .login-particles-canvas {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      z-index: 0; pointer-events: none;
+    }
+    .login-left-content { position: relative; z-index: 2; text-align: center; }
+    .login-left-icon {
+      font-size: 4.5rem; margin-bottom: 20px;
+      filter: drop-shadow(0 8px 24px rgba(0,0,0,0.2));
+      animation: floatIcon 3s ease-in-out infinite;
+    }
+    @keyframes floatIcon { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+    .login-left h2 { font-size: 2rem; font-weight: 900; color: #fff; margin-bottom: 10px; line-height: 1.2; }
+    .login-left p  { font-size: 0.92rem; color: rgba(255,255,255,0.8); line-height: 1.6; max-width: 300px; }
+    .login-features { margin-top: 32px; display: flex; flex-direction: column; gap: 12px; }
+    .login-feature {
+      display: flex; align-items: center; gap: 12px;
+      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 12px; padding: 12px 16px; text-align: left;
+    }
+    .login-feature-icon { font-size: 1.3rem; flex-shrink: 0; }
+    .login-feature-text strong { display: block; font-size: 0.82rem; font-weight: 700; color: #fff; }
+    .login-feature-text span   { font-size: 0.72rem; color: rgba(255,255,255,0.7); }
+
+    /* Panneau droit — formulaire */
+    .login-right {
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      padding: 48px 40px;
+      animation: fadeInRight 0.5s ease;
+    }
+    @keyframes fadeInRight { from{opacity:0;transform:translateX(30px)} to{opacity:1;transform:translateX(0)} }
+    .login-form-wrap { width: 100%; max-width: 380px; }
+
+    .login-logo {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 36px;
+    }
+    .login-logo-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; box-shadow: 0 4px 14px rgba(29,185,84,0.35);
+    }
+    .login-logo-text h1 { font-size: 1.3rem; font-weight: 900; color: var(--text); }
+    .login-logo-text p  { font-size: 0.68rem; color: var(--text3); margin-top: 1px; text-transform: uppercase; letter-spacing: 1px; }
+
+    .login-title { font-size: 1.6rem; font-weight: 900; color: var(--text); margin-bottom: 6px; }
+    .login-sub   { font-size: 0.85rem; color: var(--text2); margin-bottom: 28px; }
+
+    .login-field { margin-bottom: 16px; }
+    .login-field label {
+      display: block; font-size: 0.78rem; font-weight: 700;
+      color: var(--text); margin-bottom: 6px;
+    }
+    .login-input-wrap { position: relative; }
+    .login-input-icon {
+      position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+      font-size: 1rem; pointer-events: none;
+    }
+    .login-input {
+      width: 100%; padding: 11px 14px 11px 38px;
+      border: 1.5px solid var(--border); border-radius: 10px;
+      font-size: 0.88rem; font-family: 'Inter', sans-serif;
+      color: var(--text); background: #fff; outline: none;
+      transition: border-color 0.18s, box-shadow 0.18s;
+    }
+    .login-input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(29,185,84,0.12); }
+    .login-input.error { border-color: var(--red); box-shadow: 0 0 0 3px rgba(239,68,68,0.1); }
+    .login-pw-toggle {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; font-size: 1rem; color: var(--text3);
+      padding: 2px;
+    }
+
+    .login-remember {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 20px;
+      font-size: 0.8rem; color: var(--text2); cursor: pointer;
+    }
+    .login-remember input { accent-color: var(--green); width: 15px; height: 15px; cursor: pointer; }
+
+    .btn-login {
+      width: 100%; padding: 13px; border: none; border-radius: 11px;
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      color: #fff; font-size: 0.95rem; font-weight: 800; cursor: pointer;
+      transition: all 0.2s; box-shadow: 0 4px 16px rgba(29,185,84,0.35);
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      letter-spacing: 0.3px;
+    }
+    .btn-login:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(29,185,84,0.45); }
+    .btn-login:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .login-error {
+      background: #fee2e2; border: 1px solid #fca5a5; border-radius: 9px;
+      padding: 10px 14px; font-size: 0.8rem; color: #dc2626; font-weight: 600;
+      margin-bottom: 14px; display: flex; align-items: center; gap: 7px;
+      animation: shake2 0.4s ease;
+    }
+    @keyframes shake2 { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+
+    .login-hint {
+      margin-top: 20px; padding: 12px 16px;
+      background: var(--green-pale); border-radius: 10px; border: 1px solid #a7f3c3;
+      font-size: 0.75rem; color: var(--green-deep); line-height: 1.6;
+    }
+    .login-hint strong { font-weight: 700; }
+    .login-footer {
+      margin-top: 28px; text-align: center; font-size: 0.72rem; color: var(--text3);
+    }
+
+    /* Animation entrée dashboard */
+    .dashboard-enter { animation: dashEnter 0.4s ease; }
+    @keyframes dashEnter { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ══════════ CURSOR TRAIL ══════════ */
+    #cursor-canvas {
+      position: fixed; inset: 0; z-index: 999999;
+      pointer-events: none;
+    }
+
+    /* ══════════ SCAN ANIMATION ══════════ */
+    .scan-wrap { position: relative; overflow: hidden; border-radius: 10px; }
+    .scan-beam {
+      position: absolute; left: 0; right: 0; top: 0; height: 3px;
+      background: linear-gradient(90deg, transparent 0%, #1db954 20%, #4ade80 50%, #1db954 80%, transparent 100%);
+      box-shadow: 0 0 16px 4px rgba(29,185,84,0.9), 0 0 40px 8px rgba(29,185,84,0.4);
+      animation: scanBeam 1.6s cubic-bezier(0.4,0,0.6,1) infinite;
+      z-index: 5;
+    }
+    @keyframes scanBeam {
+      0%   { top: 0%; opacity: 0; }
+      5%   { opacity: 1; }
+      95%  { opacity: 0.8; }
+      100% { top: 100%; opacity: 0; }
+    }
+    .scan-grid {
+      position: absolute; inset: 0; z-index: 3; pointer-events: none;
+      background-image: linear-gradient(rgba(29,185,84,0.07) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(29,185,84,0.07) 1px, transparent 1px);
+      background-size: 22px 22px;
+    }
+    .scan-corner { position: absolute; width: 16px; height: 16px; z-index: 4; }
+    .scan-corner.tl { top: 7px; left: 7px; border-top: 2px solid #4ade80; border-left: 2px solid #4ade80; }
+    .scan-corner.tr { top: 7px; right: 7px; border-top: 2px solid #4ade80; border-right: 2px solid #4ade80; }
+    .scan-corner.bl { bottom: 7px; left: 7px; border-bottom: 2px solid #4ade80; border-left: 2px solid #4ade80; }
+    .scan-corner.br { bottom: 7px; right: 7px; border-bottom: 2px solid #4ade80; border-right: 2px solid #4ade80; }
+    .scan-label {
+      position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+      z-index: 6; background: rgba(0,0,0,0.65); color: #4ade80;
+      font-size: 0.62rem; font-weight: 800; letter-spacing: 2px;
+      padding: 3px 10px; border-radius: 20px; white-space: nowrap;
+      animation: scanLabel 1.6s ease infinite;
+    }
+    @keyframes scanLabel { 0%,100%{opacity:0.6} 50%{opacity:1} }
+
+    /* ══════════ ARC GAUGE ══════════ */
+    .arc-gauge-wrap { display: flex; flex-direction: column; align-items: center; position: relative; }
+    .arc-gauge-center {
+      position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+      text-align: center; white-space: nowrap;
+    }
+    .arc-gauge-val { font-size: 1.7rem; font-weight: 900; line-height: 1; }
+    .arc-gauge-lbl { font-size: 0.57rem; color: var(--text3); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-top: 1px; }
+
+    /* ══════════ CONFETTI ══════════ */
+    #confetti-canvas { position: fixed; inset: 0; z-index: 999998; pointer-events: none; }
+
+    /* ══════════ COMMAND PALETTE ══════════ */
+    .cmd-overlay {
+      position: fixed; inset: 0; z-index: 100000;
+      background: rgba(0,0,0,0.52); backdrop-filter: blur(8px);
+      display: flex; align-items: flex-start; justify-content: center;
+      padding-top: 12vh; animation: fadeIn 0.12s ease;
+    }
+    .cmd-box {
+      width: 560px; max-width: 92vw; background: var(--white);
+      border-radius: 18px; border: 1.5px solid var(--border);
+      box-shadow: 0 32px 80px rgba(0,0,0,0.3); overflow: hidden;
+      animation: popIn 0.2s cubic-bezier(0.34,1.3,0.64,1);
+    }
+    .cmd-input-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 18px; border-bottom: 1.5px solid var(--border);
+    }
+    .cmd-search-icon { font-size: 1.1rem; color: var(--text3); flex-shrink: 0; }
+    .cmd-input {
+      flex: 1; border: none; outline: none; font-size: 0.97rem;
+      font-family: 'Inter', sans-serif; color: var(--text);
+      background: transparent; font-weight: 500;
+    }
+    .cmd-input::placeholder { color: var(--text3); font-weight: 400; }
+    .cmd-esc {
+      font-size: 0.65rem; color: var(--text3); background: var(--bg);
+      border: 1px solid var(--border); border-radius: 5px;
+      padding: 2px 7px; font-weight: 700; white-space: nowrap; font-family: monospace;
+    }
+    .cmd-results { padding: 8px; max-height: 360px; overflow-y: auto; }
+    .cmd-section-lbl {
+      font-size: 0.62rem; font-weight: 800; color: var(--text3);
+      text-transform: uppercase; letter-spacing: 1.3px;
+      padding: 10px 10px 5px;
+    }
+    .cmd-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 9px 12px; border-radius: 10px; cursor: pointer; transition: all 0.1s;
+    }
+    .cmd-item.selected, .cmd-item:hover { background: var(--green-pale); }
+    .cmd-item.selected .cmd-item-name { color: var(--green-dark); }
+    .cmd-item-icon { font-size: 1rem; width: 24px; text-align: center; flex-shrink: 0; }
+    .cmd-item-name { font-size: 0.85rem; font-weight: 600; color: var(--text); flex: 1; }
+    .cmd-item-desc { font-size: 0.7rem; color: var(--text3); white-space: nowrap; }
+    .cmd-footer {
+      padding: 8px 18px; border-top: 1.5px solid var(--border);
+      display: flex; gap: 14px; font-size: 0.67rem; color: var(--text3); align-items: center;
+    }
+    .cmd-footer kbd {
+      background: var(--bg); border: 1px solid var(--border2);
+      border-radius: 4px; padding: 1px 5px;
+      font-family: monospace; color: var(--text2); font-size: 0.67rem;
+    }
+    body.dark .cmd-box { background: #1a1d27; }
+    body.dark .cmd-input-row, body.dark .cmd-footer { border-color: #2a2d3a; }
+    body.dark .cmd-item.selected, body.dark .cmd-item:hover { background: #0d2e1a; }
+
+    /* ══════════ ACHIEVEMENT TOAST ══════════ */
+    .achievement-toast {
+      position: fixed; top: 76px; right: 20px; z-index: 99998;
+      background: var(--white); border: 1.5px solid var(--border);
+      border-radius: 16px; overflow: hidden; width: 300px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.22);
+      animation: achieveIn 0.45s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes achieveIn { from{opacity:0;transform:translateX(120%)} to{opacity:1;transform:translateX(0)} }
+    .achieve-shimmer {
+      height: 4px;
+      background: linear-gradient(90deg,#f59e0b,#4ade80,#3b82f6,#f59e0b);
+      background-size: 300%;
+      animation: shimmerBar 2s linear infinite;
+    }
+    @keyframes shimmerBar { 0%{background-position:0%} 100%{background-position:300%} }
+    .achieve-tag {
+      padding: 3px 14px; background: linear-gradient(135deg,#f59e0b,#d97706);
+      font-size: 0.6rem; font-weight: 800; color: #fff;
+      text-transform: uppercase; letter-spacing: 1.5px;
+    }
+    .achieve-body { padding: 12px 14px; display: flex; align-items: center; gap: 12px; }
+    .achieve-icon { font-size: 2rem; line-height: 1; flex-shrink: 0; }
+    .achieve-title { font-size: 0.86rem; font-weight: 800; color: var(--text); }
+    .achieve-desc  { font-size: 0.7rem; color: var(--text2); margin-top: 2px; line-height: 1.4; }
+    .achieve-xp {
+      display: inline-block; margin-top: 5px;
+      font-size: 0.68rem; font-weight: 800;
+      color: var(--green-dark); background: var(--green-pale);
+      border-radius: 8px; padding: 1px 8px;
+    }
+
+    /* ══════════ SCROLL REVEAL ══════════ */
+    .reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.55s ease, transform 0.55s ease; }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .rv2 { transition-delay: 0.12s; }
+    .rv3 { transition-delay: 0.24s; }
+    .rv4 { transition-delay: 0.36s; }
+
+    /* ══════════ LIVE TICKER ══════════ */
+    .live-ticker {
+      display: flex; align-items: center; gap: 7px; background: var(--bg);
+      border: 1px solid var(--border); border-radius: 20px; padding: 4px 11px;
+      font-size: 0.66rem; color: var(--text3); font-weight: 600;
+      max-width: 190px; overflow: hidden;
+    }
+    .ticker-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; animation: pulse 2s infinite; }
+    .ticker-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; animation: tickFade 0.35s ease; }
+    @keyframes tickFade { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+    @media(max-width:1100px){ .live-ticker{display:none;} }
+
+    /* ══════════ ANIMATED NUMBER ══════════ */
+    .anim-num { font-variant-numeric: tabular-nums; display: inline; }
+
+    /* ══════════ KB HINT BAR ══════════ */
+    .kb-bar {
+      display: flex; align-items: center; gap: 16px;
+      padding: 5px 32px; font-size: 0.66rem; color: var(--text3);
+      background: var(--bg); border-bottom: 1px solid var(--border);
+      overflow-x: auto; white-space: nowrap;
+    }
+    .kb-bar kbd {
+      background: var(--white); border: 1px solid var(--border2);
+      border-radius: 4px; padding: 1px 6px;
+      font-family: monospace; font-size: 0.66rem; color: var(--text2);
+      box-shadow: 0 1px 0 var(--border2); margin: 0 2px;
+    }
+    .kb-bar-sep { color: var(--border2); }
+    @media(max-width:900px){ .kb-bar{display:none;} }
+
+    /* ══════════ GLASSMORPHISM — DARK MODE ══════════ */
+    body.dark .chart-card {
+      background: rgba(26,29,39,0.88);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      border-color: rgba(255,255,255,0.05);
+    }
+    body.dark .metric-card {
+      background: rgba(26,29,39,0.88);
+      backdrop-filter: blur(12px);
+      border-color: rgba(255,255,255,0.05);
+    }
+    body.dark .stats-kpi {
+      background: rgba(26,29,39,0.88);
+      backdrop-filter: blur(12px);
+      border-color: rgba(255,255,255,0.05);
+    }
+    body.dark .navbar {
+      background: rgba(15,17,23,0.92);
+      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+      border-bottom-color: rgba(255,255,255,0.05);
+    }
+
+    /* ══════════ HEALTHY CELEBRATION ══════════ */
+    @keyframes healthyPop {
+      0%   { transform: scale(1); }
+      30%  { transform: scale(1.06); }
+      60%  { transform: scale(0.97); }
+      100% { transform: scale(1); }
+    }
+    .healthy-pop { animation: healthyPop 0.5s ease; }
+
+    /* ══════════ AMBIENT BG GLOW ══════════ */
+    .ambient-glow {
+      position: fixed; border-radius: 50%; filter: blur(100px);
+      pointer-events: none; z-index: 0; transition: all 2.5s ease;
+    }
+    .ambient-glow.g1 { width: 600px; height: 600px; top: -200px; right: -150px; }
+    .ambient-glow.g2 { width: 400px; height: 400px; bottom: -100px; left: -100px; }
+
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useRef, useEffect } = React;
+
+const API_URL = "http://localhost:5000";
+
+/* ══ Mapping classes YOLOv8 → français ══
+   Basé sur PlantVillage dataset (38 classes standard).
+   Le modèle modele_plantes.pt utilise ces indices. */
+const CLASS_MAP = {
+  0:  { maladie:"Tache bactérienne (Tomate)",      niveau:"sick",     conseil:"Appliquer un bactéricide au cuivre. Éviter l'arrosage par aspersion." },
+  1:  { maladie:"Alternariose précoce (Tomate)",    niveau:"sick",     conseil:"Retirer les feuilles atteintes. Traitement fongicide préventif." },
+  2:  { maladie:"Mildiou (Tomate)",                 niveau:"critical", conseil:"Infestation grave. Isoler et traiter immédiatement au métalaxyl." },
+  3:  { maladie:"Moisissure des feuilles (Tomate)", niveau:"sick",     conseil:"Améliorer la ventilation. Fongicide à base de chlorothalonil." },
+  4:  { maladie:"Septoriose (Tomate)",              niveau:"sick",     conseil:"Supprimer les feuilles infectées. Éviter l'humidité foliaire." },
+  5:  { maladie:"Acariens (Tomate)",                niveau:"sick",     conseil:"Traitement acaricide. Augmenter l'humidité ambiante." },
+  6:  { maladie:"Tache cible (Tomate)",             niveau:"sick",     conseil:"Rotation des cultures. Fongicide préventif recommandé." },
+  7:  { maladie:"Virus jaunissement feuilles (Tomate)", niveau:"critical", conseil:"Maladie virale grave. Arracher et détruire les plants atteints." },
+  8:  { maladie:"Virus mosaïque (Tomate)",          niveau:"critical", conseil:"Pas de traitement curatif. Éliminer les plants infectés immédiatement." },
+  9:  { maladie:"Tomate saine",                     niveau:"healthy",  conseil:"Aucune anomalie détectée. Maintenir un arrosage régulier." },
+  10: { maladie:"Tavelure (Pomme)",                 niveau:"sick",     conseil:"Fongicide au cuivre. Ramasser et détruire les feuilles tombées." },
+  11: { maladie:"Pourriture noire (Pomme)",         niveau:"critical", conseil:"Tailler les parties atteintes. Traitement fongicide systémique." },
+  12: { maladie:"Rouille cèdre-pommier",            niveau:"sick",     conseil:"Fongicide préventif au printemps. Éliminer les genévriers proches." },
+  13: { maladie:"Pomme saine",                      niveau:"healthy",  conseil:"Plant en bonne santé. Surveiller régulièrement." },
+  14: { maladie:"Myrtille saine",                   niveau:"healthy",  conseil:"Aucune anomalie. Maintenir le pH du sol entre 4.5 et 5.5." },
+  15: { maladie:"Oïdium (Cerise)",                  niveau:"sick",     conseil:"Traitement au soufre ou bicarbonate. Améliorer la ventilation." },
+  16: { maladie:"Cerise saine",                     niveau:"healthy",  conseil:"Plant en bonne santé. Continuer la surveillance." },
+  17: { maladie:"Cercosporiose (Maïs)",             niveau:"sick",     conseil:"Rotation des cultures. Variétés résistantes recommandées." },
+  18: { maladie:"Rouille commune (Maïs)",           niveau:"sick",     conseil:"Fongicide foliaire. Surveiller l'humidité." },
+  19: { maladie:"Brûlure foliaire (Maïs)",          niveau:"critical", conseil:"Fongicide systémique. Éliminer les résidus de culture." },
+  20: { maladie:"Maïs sain",                        niveau:"healthy",  conseil:"Aucune anomalie. Maintenir la fertilisation azotée." },
+  21: { maladie:"Pourriture noire (Vigne)",         niveau:"critical", conseil:"Tailler et brûler les parties atteintes. Fongicide cuivrique." },
+  22: { maladie:"Esca / Eutypiose (Vigne)",         niveau:"critical", conseil:"Maladie du bois grave. Consulter un vitiviniculteur spécialisé." },
+  23: { maladie:"Brûlure des feuilles (Vigne)",     niveau:"sick",     conseil:"Fongicide préventif. Éviter l'excès d'azote." },
+  24: { maladie:"Vigne saine",                      niveau:"healthy",  conseil:"Plant en bonne santé. Surveiller l'humidité." },
+  25: { maladie:"Huanglongbing (Orange)",           niveau:"critical", conseil:"Maladie incurable. Arracher les arbres atteints immédiatement." },
+  26: { maladie:"Tache bactérienne (Pêche)",        niveau:"sick",     conseil:"Bactéricide cuivrique. Éviter les blessures sur les fruits." },
+  27: { maladie:"Pêche saine",                      niveau:"healthy",  conseil:"Aucune anomalie détectée. Continuer la surveillance." },
+  28: { maladie:"Tache bactérienne (Poivron)",      niveau:"sick",     conseil:"Bactéricide au cuivre. Rotation des cultures recommandée." },
+  29: { maladie:"Poivron sain",                     niveau:"healthy",  conseil:"Plant en bonne santé. Maintenir l'arrosage régulier." },
+  30: { maladie:"Alternariose précoce (Pomme de terre)", niveau:"sick",  conseil:"Fongicide préventif. Éviter les excès d'humidité foliaire." },
+  31: { maladie:"Mildiou (Pomme de terre)",         niveau:"critical", conseil:"Maladie grave. Traitement au métalaxyl en urgence. Isoler." },
+  32: { maladie:"Pomme de terre saine",             niveau:"healthy",  conseil:"Aucune anomalie. Maintenir un bon drainage du sol." },
+  33: { maladie:"Framboise saine",                  niveau:"healthy",  conseil:"Plant en bonne santé. Surveiller les acariens au printemps." },
+  34: { maladie:"Soja sain",                        niveau:"healthy",  conseil:"Aucune anomalie. Maintenir la rotation avec céréales." },
+  35: { maladie:"Oïdium (Courge)",                  niveau:"sick",     conseil:"Traitement au soufre. Améliorer l'aération entre plants." },
+  36: { maladie:"Brûlure des feuilles (Fraise)",    niveau:"sick",     conseil:"Fongicide préventif. Éliminer les feuilles âgées." },
+  37: { maladie:"Fraise saine",                     niveau:"healthy",  conseil:"Plant en bonne santé. Surveiller les ravageurs du sol." },
+};
+
+/* Convertit la réponse brute du backend YOLOv8 → format frontend */
+function transformBackendResponse(raw) {
+  // Pas de détection
+  if (!raw.predictions || raw.predictions.length === 0) {
+    return { maladie:"Aucune maladie détectée", niveau:"healthy", score:95, conseil:"Le modèle n'a détecté aucune pathologie. Plante probablement saine." };
+  }
+  // Prendre la prédiction avec la meilleure confiance
+  const best = raw.predictions.reduce((a,b) => a.confidence > b.confidence ? a : b);
+  const score = Math.round(best.confidence * 100);
+  const mapped = CLASS_MAP[best.class];
+  if (mapped) {
+    return { ...mapped, score };
+  }
+  // Classe inconnue — fallback générique basé sur la confiance
+  const niveau = score >= 85 ? "critical" : score >= 55 ? "sick" : "healthy";
+  return {
+    maladie: `Maladie détectée (classe ${best.class})`,
+    niveau,
+    score,
+    conseil: "Consulter un agronome pour identification précise."
+  };
+}
+
+const MOCK = [
+  { maladie:"Mildiou (Plasmopara)", niveau:"sick",     score:87, conseil:"Appliquer un fongicide à base de cuivre. Supprimer les feuilles atteintes." },
+  { maladie:"Rouille foliaire",     niveau:"sick",     score:73, conseil:"Traitement préventif au soufre. Assurer une bonne aération entre les plants." },
+  { maladie:"Alternariose",         niveau:"critical", score:92, conseil:"Infestation sévère. Isoler immédiatement et contacter un agronome." },
+  { maladie:"Plante saine",         niveau:"healthy",  score:98, conseil:"Aucune anomalie. Maintenir un arrosage régulier et une bonne exposition." },
+  { maladie:"Oïdium",               niveau:"sick",     score:81, conseil:"Traitement au bicarbonate ou soufre. Améliorer la ventilation." },
+];
+const COLORS = ["#1db954","#3b82f6","#f59e0b","#ef4444","#a855f7","#06b6d4","#ec4899","#eab308"];
+const bcolor  = n => n==="healthy"?"#1db954":n==="critical"?"#ef4444":"#f59e0b";
+const fmtFull = d => d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+const fmtTime = d => d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+const today   = () => new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+
+/* ── Sensor simulation ── */
+function useSensors() {
+  const init = {temp:24.3,humidity:62,soil:65,light:74};
+  const [s, setS] = useState(init);
+  const [hist, setHist] = useState({labels:[],temp:[],hum:[],soil:[]});
+  useEffect(()=>{
+    const id = setInterval(()=>{
+      setS(p=>({
+        temp:    +(Math.min(40,Math.max(10, p.temp    +(Math.random()-.5)*.5))).toFixed(1),
+        humidity: Math.min(95,Math.max(20, Math.round(p.humidity+(Math.random()-.5)*2))),
+        soil:     Math.min(95,Math.max(20, Math.round(p.soil    +(Math.random()-.5)*1.5))),
+        light:    Math.min(100,Math.max(20,Math.round(p.light   +(Math.random()-.5)*2))),
+      }));
+    },2500);
+    return ()=>clearInterval(id);
+  },[]);
+  useEffect(()=>{
+    setHist(p=>{
+      const t = new Date();
+      const lbl = [...p.labels, fmtTime(t)].slice(-12);
+      return { labels:lbl, temp:[...p.temp,s.temp].slice(-12), hum:[...p.hum,s.humidity].slice(-12), soil:[...p.soil,s.soil].slice(-12) };
+    });
+  },[s]);
+  return {s, hist};
+}
+
+/* ── TiltCard — effet 3D au survol ── */
+function TiltCard({ children, className, style, maxTilt }) {
+  maxTilt = maxTilt || 15;
+  var ref = React.useRef();
+  function onMouseMove(e) {
+    var el = ref.current;
+    if (!el) return;
+    var rect = el.getBoundingClientRect();
+    var cx = rect.left + rect.width / 2;
+    var cy = rect.top + rect.height / 2;
+    var dx = (e.clientX - cx) / (rect.width / 2);
+    var dy = (e.clientY - cy) / (rect.height / 2);
+    var rotX = (-dy * maxTilt).toFixed(2);
+    var rotY = (dx * maxTilt).toFixed(2);
+    var mx = ((e.clientX - rect.left) / rect.width * 100).toFixed(1);
+    var my = ((e.clientY - rect.top) / rect.height * 100).toFixed(1);
+    el.style.transform = "perspective(800px) rotateX("+rotX+"deg) rotateY("+rotY+"deg) scale3d(1.04,1.04,1.04)";
+    el.style.boxShadow = "0 24px 60px rgba(0,0,0,0.25)";
+    var glare = el.querySelector('.tilt-glare');
+    if (glare) {
+      glare.style.setProperty('--mx', mx + '%');
+      glare.style.setProperty('--my', my + '%');
+    }
+  }
+  function onMouseLeave() {
+    var el = ref.current;
+    if (!el) return;
+    el.style.transform = '';
+    el.style.boxShadow = '';
+  }
+  return React.createElement(
+    'div',
+    { ref: ref, className: 'tilt-wrap ' + (className || ''), style: style,
+      onMouseMove: onMouseMove, onMouseLeave: onMouseLeave },
+    React.createElement('div', { className: 'tilt-glare' }),
+    children
+  );
+}
+
+/* ── Sparkline ── */
+function Sparkline({ data, color, fill }) {
+  const r=useRef(); const c=useRef();
+  useEffect(()=>{
+    c.current?.destroy();
+    if (!data.length) return;
+    const ctx = r.current.getContext("2d");
+    const grad = ctx.createLinearGradient(0,0,0,70);
+    grad.addColorStop(0, color+"44");
+    grad.addColorStop(1, color+"00");
+    c.current = new Chart(ctx,{
+      type:"line",
+      data:{labels:data.map((_,i)=>""),datasets:[{data,borderColor:color,backgroundColor:fill?grad:"transparent",borderWidth:2,pointRadius:0,tension:0.5,fill:fill}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{enabled:false}},scales:{x:{display:false},y:{display:false}},animation:{duration:400}}
+    });
+    return ()=>c.current?.destroy();
+  },[JSON.stringify(data)]);
+  return <canvas ref={r}/>;
+}
+
+/* ── Multi-line chart ── */
+function MultiLine({ labels, datasets, height=190 }) {
+  const r=useRef(); const c=useRef();
+  useEffect(()=>{
+    c.current?.destroy();
+    if (!labels.length) return;
+    c.current = new Chart(r.current.getContext("2d"),{
+      type:"line",
+      data:{labels,datasets:datasets.map(d=>{
+        const ctx = r.current.getContext("2d");
+        const g = ctx.createLinearGradient(0,0,0,height);
+        g.addColorStop(0,d.color+"30"); g.addColorStop(1,d.color+"00");
+        return {label:d.label,data:d.data,borderColor:d.color,backgroundColor:g,borderWidth:2.5,pointRadius:3,pointBackgroundColor:d.color,tension:0.4,fill:true};
+      })},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{labels:{color:"#64748b",font:{size:11,family:"Inter"},boxWidth:10,padding:14}},
+          tooltip:{backgroundColor:"#fff",titleColor:"#0f172a",bodyColor:"#64748b",borderColor:"#e2e8f0",borderWidth:1,padding:10,boxPadding:4}},
+        scales:{
+          x:{grid:{color:"#f1f5f9",drawBorder:false},ticks:{color:"#94a3b8",font:{size:10}}},
+          y:{grid:{color:"#f1f5f9",drawBorder:false},ticks:{color:"#94a3b8",font:{size:10}}}
+        }
+      }
+    });
+    return ()=>c.current?.destroy();
+  },[JSON.stringify(labels),JSON.stringify(datasets)]);
+  return <canvas ref={r}/>;
+}
+
+/* ── Donut ── */
+function Donut({ data, labels, colors }) {
+  const r=useRef(); const c=useRef();
+  useEffect(()=>{
+    c.current?.destroy();
+    if (!data.length) return;
+    c.current = new Chart(r.current.getContext("2d"),{
+      type:"doughnut",
+      data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:3,borderColor:"#fff",hoverOffset:6}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:"68%",
+        plugins:{legend:{position:"bottom",labels:{padding:14,font:{size:11,family:"Inter"},color:"#475569",boxWidth:11}},
+          tooltip:{backgroundColor:"#fff",titleColor:"#0f172a",bodyColor:"#64748b",borderColor:"#e2e8f0",borderWidth:1}}
+      }
+    });
+    return ()=>c.current?.destroy();
+  },[JSON.stringify(data)]);
+  return <canvas ref={r}/>;
+}
+
+
+/* ══════════════ CURSOR TRAIL ══════════════ */
+function CursorTrail() {
+  useEffect(() => {
+    var canvas = document.createElement('canvas');
+    canvas.id = 'cursor-canvas';
+    canvas.style.cssText = 'position:fixed;inset:0;z-index:999999;pointer-events:none';
+    document.body.appendChild(canvas);
+    var ctx = canvas.getContext('2d');
+    var W, H;
+    var resize = function() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; };
+    resize(); window.addEventListener('resize', resize);
+    var particles = [], mx = -300, my = -300, frame = 0;
+    window.addEventListener('mousemove', function(e){ mx=e.clientX; my=e.clientY; });
+    var animId;
+    function loop() {
+      animId = requestAnimationFrame(loop);
+      ctx.clearRect(0,0,W,H);
+      frame++;
+      if (frame%2===0 && mx>0) {
+        particles.push({
+          x:mx+(Math.random()-.5)*6, y:my+(Math.random()-.5)*6,
+          vx:(Math.random()-.5)*2, vy:(Math.random()-.5)*2-1,
+          life:1, size:Math.random()*3+1.5, hue:110+Math.random()*50
+        });
+      }
+      for (var i=particles.length-1; i>=0; i--) {
+        var p=particles[i];
+        p.x+=p.vx; p.y+=p.vy; p.vy+=0.06; p.vx*=0.96; p.life-=0.05;
+        if(p.life<=0){particles.splice(i,1);continue;}
+        ctx.save();
+        ctx.globalAlpha=p.life*0.7;
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.size*p.life,0,Math.PI*2);
+        ctx.fillStyle='hsl('+p.hue+',85%,55%)';
+        ctx.shadowColor='hsl('+p.hue+',85%,55%)'; ctx.shadowBlur=8;
+        ctx.fill(); ctx.restore();
+      }
+    }
+    loop();
+    return function(){ cancelAnimationFrame(animId); window.removeEventListener('resize',resize); if(canvas.parentNode)canvas.remove(); };
+  }, []);
+  return null;
+}
+
+/* ══════════════ CONFETTI ══════════════ */
+function triggerConfetti(ox, oy) {
+  var canvas = document.getElementById('confetti-canvas');
+  if (!canvas) {
+    canvas = document.createElement('canvas');
+    canvas.id='confetti-canvas';
+    canvas.style.cssText='position:fixed;inset:0;z-index:999998;pointer-events:none';
+    document.body.appendChild(canvas);
+  }
+  canvas.width=window.innerWidth; canvas.height=window.innerHeight;
+  var ctx=canvas.getContext('2d');
+  var cx=ox||canvas.width/2, cy=oy||canvas.height*0.38;
+  var colors=['#1db954','#4ade80','#a7f3d0','#fbbf24','#34d399','#6ee7b7','#f9a8d4','#93c5fd','#c4b5fd'];
+  var pieces=[];
+  for(var i=0;i<110;i++){
+    var ang=(Math.random()*340-170)*Math.PI/180;
+    var spd=Math.random()*12+4;
+    pieces.push({
+      x:cx,y:cy,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-3,
+      w:Math.random()*10+4,h:Math.random()*5+2,
+      color:colors[Math.floor(Math.random()*colors.length)],
+      rot:Math.random()*360,rotSpd:(Math.random()-.5)*9,
+      life:1,grav:0.14+Math.random()*0.08,
+      shape:Math.random()>.6?'circle':'rect'
+    });
+  }
+  var animId;
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    var any=false;
+    pieces.forEach(function(p){
+      p.x+=p.vx;p.y+=p.vy;p.vy+=p.grav;p.vx*=0.99;
+      p.rot+=p.rotSpd;p.life-=0.015;
+      if(p.life<=0||p.y>canvas.height)return;
+      any=true;
+      ctx.save();ctx.globalAlpha=Math.min(1,p.life*1.4);
+      ctx.fillStyle=p.color;ctx.shadowColor=p.color;ctx.shadowBlur=4;
+      ctx.translate(p.x,p.y);ctx.rotate(p.rot*Math.PI/180);
+      if(p.shape==='circle'){ctx.beginPath();ctx.arc(0,0,p.w/2,0,Math.PI*2);ctx.fill();}
+      else{ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);}
+      ctx.restore();
+    });
+    if(any)animId=requestAnimationFrame(draw);
+    else{cancelAnimationFrame(animId);ctx.clearRect(0,0,canvas.width,canvas.height);}
+  }
+  draw();
+}
+
+/* ══════════════ ANIMATED NUMBER ══════════════ */
+function AnimatedNumber({ value, suffix, prefix, decimals, color }) {
+  var numVal = Number(value);
+  var [disp, setDisp] = useState(numVal);
+  var prev = useRef(numVal);
+  useEffect(function(){
+    var from=Number(prev.current), to=Number(value);
+    prev.current=value;
+    if(from===to)return;
+    var dur=650, start=performance.now(), id;
+    function step(now){
+      var t=Math.min((now-start)/dur,1);
+      var ease=1-Math.pow(1-t,3);
+      var v=from+(to-from)*ease;
+      setDisp(decimals!=null?v.toFixed(decimals):Math.round(v));
+      if(t<1)id=requestAnimationFrame(step);
+    }
+    id=requestAnimationFrame(step);
+    return function(){cancelAnimationFrame(id);};
+  },[value]);
+  return React.createElement('span',{className:'anim-num',style:color?{color}:{}},
+    (prefix||'')+disp+(suffix||'')
+  );
+}
+
+/* ══════════════ ARC GAUGE ══════════════ */
+function ArcGauge({ value, color, size }) {
+  size = size||112;
+  var stroke=9, r=(size-stroke*2)/2, cx=size/2, cy=size/2;
+  function pTC(deg){ var rad=(deg-90)*Math.PI/180; return {x:cx+r*Math.cos(rad),y:cy+r*Math.sin(rad)}; }
+  function arc(s,e){ var sp=pTC(s),ep=pTC(e),lg=e-s>180?1:0; return 'M '+sp.x+' '+sp.y+' A '+r+' '+r+' 0 '+lg+' 1 '+ep.x+' '+ep.y; }
+  var bgPath=arc(135,405);
+  var fgPath=arc(135, 135+Math.min(value/100,1)*270);
+  var c=color||'#1db954';
+  return (
+    <div className="arc-gauge-wrap" style={{width:size,height:size*0.76}}>
+      <svg width={size} height={size} viewBox={'0 0 '+size+' '+size} style={{position:"absolute",top:0,left:0}}>
+        <path d={bgPath} fill="none" stroke="rgba(148,163,184,0.2)" strokeWidth={stroke} strokeLinecap="round"/>
+        <path d={fgPath} fill="none" stroke={c} strokeWidth={stroke} strokeLinecap="round"
+          style={{filter:'drop-shadow(0 0 6px '+c+'88)',transition:'all 1.2s cubic-bezier(0.34,1.56,0.64,1)'}}/>
+      </svg>
+      <div className="arc-gauge-center">
+        <div className="arc-gauge-val" style={{color:c}}>{value}<span style={{fontSize:"0.5em",fontWeight:700}}>%</span></div>
+        <div className="arc-gauge-lbl">Confidence</div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════ COMMAND PALETTE ══════════════ */
+function CommandPalette({ onClose, onNavigate, history, darkMode, onToggleDark }) {
+  var [q,setQ]=useState(""), [sel,setSel]=useState(0);
+  var inputRef=useRef();
+  useEffect(function(){ inputRef.current&&inputRef.current.focus(); },[]);
+
+  var BASE=[
+    {icon:"📊",name:"Dashboard",        desc:"Vue principale",          action:function(){onNavigate("dashboard");onClose();}},
+    {icon:"🔍",name:"Analyser",          desc:"Analyser une plante",     action:function(){onNavigate("analyse");onClose();}},
+    {icon:"🗂️",name:"Historique",        desc:"Toutes les analyses",     action:function(){onNavigate("history");onClose();}},
+    {icon:"📈",name:"Statistiques",      desc:"Graphiques & tendances",  action:function(){onNavigate("stats");onClose();}},
+    {icon:darkMode?"☀️":"🌙",name:"Basculer le thème", desc:darkMode?"→ Mode clair":"→ Mode sombre", action:function(){onToggleDark();onClose();}},
+    {icon:"📄",name:"Exporter PDF",      desc:"Rapport complet",         action:function(){onClose();}},
+  ];
+  var HIST=(history||[]).slice(0,4).map(function(h){return {
+    icon:h.niveau==="healthy"?"🟢":h.niveau==="critical"?"🔴":"🟡",
+    name:h.maladie, desc:h.score+"% · "+(h.image||"image"),
+    action:function(){onNavigate("history");onClose();}
+  };});
+
+  var filtered=q?[...BASE,...HIST].filter(function(c){
+    return c.name.toLowerCase().includes(q.toLowerCase())||c.desc.toLowerCase().includes(q.toLowerCase());
+  }):BASE;
+
+  var sections=q?[{lbl:"Résultats",items:filtered}]:[
+    ...(HIST.length?[{lbl:"Analyses récentes",items:HIST}]:[]),
+    {lbl:"Actions",items:BASE}
+  ];
+  var allItems=sections.reduce(function(a,s){return a.concat(s.items);},[]);
+
+  var handleKey=function(e){
+    if(e.key==='Escape'){onClose();return;}
+    if(e.key==='ArrowDown'){e.preventDefault();setSel(function(s){return Math.min(s+1,allItems.length-1);});}
+    if(e.key==='ArrowUp'){e.preventDefault();setSel(function(s){return Math.max(s-1,0);});}
+    if(e.key==='Enter'){e.preventDefault();if(allItems[sel])allItems[sel].action();}
+  };
+
+  var gIdx=0;
+  return (
+    <div className="cmd-overlay" onClick={onClose}>
+      <div className="cmd-box" onClick={function(e){e.stopPropagation();}}>
+        <div className="cmd-input-row">
+          <span className="cmd-search-icon">⌕</span>
+          <input ref={inputRef} className="cmd-input"
+            placeholder="Rechercher une page, action, analyse…"
+            value={q} onChange={function(e){setQ(e.target.value);setSel(0);}}
+            onKeyDown={handleKey}/>
+          <span className="cmd-esc">ESC</span>
+        </div>
+        <div className="cmd-results">
+          {sections.map(function(sec,si){
+            return (
+              <div key={si}>
+                <div className="cmd-section-lbl">{sec.lbl}</div>
+                {sec.items.map(function(c,i){
+                  var idx=gIdx++;
+                  return (
+                    <div key={i} className={"cmd-item"+(sel===idx?" selected":"")}
+                      onMouseEnter={function(){setSel(idx);}}
+                      onClick={function(){c.action();}}>
+                      <span className="cmd-item-icon">{c.icon}</span>
+                      <span className="cmd-item-name">{c.name}</span>
+                      <span className="cmd-item-desc">{c.desc}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+          {allItems.length===0&&<div style={{padding:"22px",textAlign:"center",color:"var(--text3)",fontSize:"0.82rem"}}>Aucun résultat pour "{q}"</div>}
+        </div>
+        <div className="cmd-footer">
+          <span><kbd>↑↓</kbd> naviguer</span>
+          <span><kbd>↵</kbd> sélectionner</span>
+          <span><kbd>ESC</kbd> fermer</span>
+          <span style={{marginLeft:"auto",fontWeight:700,color:"var(--green-dark)"}}>PlantAI v2.0</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════ ACHIEVEMENT TOAST ══════════════ */
+function AchievementToast({ data, onDone }) {
+  useEffect(function(){var t=setTimeout(onDone,4500);return function(){clearTimeout(t);};}, []);
+  return (
+    <div className="achievement-toast">
+      <div className="achieve-shimmer"/>
+      <div className="achieve-tag">🏆 Succès débloqué !</div>
+      <div className="achieve-body">
+        <div className="achieve-icon">{data.icon}</div>
+        <div>
+          <div className="achieve-title">{data.title}</div>
+          <div className="achieve-desc">{data.desc}</div>
+          <div className="achieve-xp">+{data.xp} XP</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════ LIVE TICKER (hook) ══════════════ */
+function useTicker(result) {
+  var base=["ESP32-CAM · Online","YOLOv8 · Chargé","Accuracy · 94.7%","Flask API · Prête","MongoDB · OK"];
+  var msgs=result?["Dernier: "+result.maladie.slice(0,22),"Conf: "+result.score+"%"].concat(base):base;
+  var [idx,setIdx]=useState(0), [tick,setTick]=useState(0);
+  useEffect(function(){
+    var id=setInterval(function(){setIdx(function(i){return(i+1)%msgs.length;});setTick(function(t){return t+1;});},3000);
+    return function(){clearInterval(id);};
+  },[msgs.length]);
+  return {msg:msgs[idx],tick};
+}
+
+/* ══════════════ SCROLL REVEAL (hook) ══════════════ */
+function useScrollReveal(page) {
+  useEffect(function(){
+    var els=document.querySelectorAll('.reveal');
+    if(!els.length)return;
+    if(!('IntersectionObserver' in window)){
+      els.forEach(function(el){el.classList.add('visible');});return;
+    }
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){if(e.isIntersecting)e.target.classList.add('visible');});
+    },{threshold:0.08,rootMargin:'0px 0px -20px 0px'});
+    els.forEach(function(el){obs.observe(el);});
+    return function(){obs.disconnect();};
+  },[page]);
+}
+
+/* ══════════════ SPLASH SCREEN ══════════════ */
+function SplashScreen({ onDone }) {
+  const [fading, setFading] = useState(false);
+  const [status, setStatus] = useState("Initialisation du système…");
+  const canvasRef = useRef();
+  const rendererRef = useRef();
+
+  const STEPS = [
+    { t: 400,  msg: "Connexion à l'ESP32-CAM…" },
+    { t: 900,  msg: "Chargement du modèle YOLOv8…" },
+    { t: 1500, msg: "Lecture des capteurs IoT…" },
+    { t: 2100, msg: "Prêt ✓" },
+  ];
+
+  /* ── Three.js 3D sphere ── */
+  useEffect(() => {
+    const THREE = window.THREE;
+    if (!THREE || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const W = canvas.offsetWidth || window.innerWidth;
+    const H = canvas.offsetHeight || window.innerHeight;
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setSize(W, H);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x000000, 0);
+    rendererRef.current = renderer;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 100);
+    camera.position.z = 3.2;
+
+    /* Fibonacci sphere — distribution uniforme des particules */
+    const N = 280;
+    const positions = [];
+    const pts = [];
+    const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+    for (let i = 0; i < N; i++) {
+      const y = 1 - (i / (N - 1)) * 2;
+      const r = Math.sqrt(1 - y * y);
+      const theta = goldenAngle * i;
+      const x = Math.cos(theta) * r;
+      const z = Math.sin(theta) * r;
+      positions.push(x, y, z);
+      pts.push({ x, y, z });
+    }
+
+    /* Points verts lumineux */
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    const mat = new THREE.PointsMaterial({
+      color: 0x1db954, size: 0.045,
+      transparent: true, opacity: 0.95,
+      sizeAttenuation: true,
+    });
+    const sphere = new THREE.Points(geo, mat);
+    scene.add(sphere);
+
+    /* Lignes entre particules proches — réseau neuronal */
+    const linePos = [];
+    const threshold = 0.38;
+    for (let i = 0; i < pts.length; i++) {
+      for (let j = i + 1; j < pts.length; j++) {
+        const dx = pts[i].x - pts[j].x;
+        const dy = pts[i].y - pts[j].y;
+        const dz = pts[i].z - pts[j].z;
+        if (Math.sqrt(dx*dx + dy*dy + dz*dz) < threshold) {
+          linePos.push(pts[i].x, pts[i].y, pts[i].z, pts[j].x, pts[j].y, pts[j].z);
+        }
+      }
+    }
+    const lineGeo = new THREE.BufferGeometry();
+    lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(linePos, 3));
+    const lineMat = new THREE.LineBasicMaterial({ color: 0x4ade80, transparent: true, opacity: 0.18 });
+    const lines = new THREE.LineSegments(lineGeo, lineMat);
+    scene.add(lines);
+
+    /* Halo lumineux central */
+    const glowGeo = new THREE.SphereGeometry(0.92, 32, 32);
+    const glowMat = new THREE.MeshBasicMaterial({
+      color: 0x1db954, transparent: true, opacity: 0.04, side: THREE.BackSide,
+    });
+    scene.add(new THREE.Mesh(glowGeo, glowMat));
+
+    /* Deuxième sphère de points plus petits — profondeur */
+    const N2 = 120;
+    const pos2 = [];
+    for (let i = 0; i < N2; i++) {
+      const y = 1 - (i / (N2 - 1)) * 2;
+      const r = Math.sqrt(1 - y * y) * 1.45;
+      const theta = goldenAngle * i * 1.3;
+      pos2.push(Math.cos(theta)*r, y*1.45, Math.sin(theta)*r);
+    }
+    const geo2 = new THREE.BufferGeometry();
+    geo2.setAttribute('position', new THREE.Float32BufferAttribute(pos2, 3));
+    const mat2 = new THREE.PointsMaterial({ color: 0xa7f3d0, size: 0.022, transparent: true, opacity: 0.5 });
+    scene.add(new THREE.Points(geo2, mat2));
+
+    /* Animation loop */
+    let frame; let t = 0;
+    const animate = () => {
+      frame = requestAnimationFrame(animate);
+      t += 0.008;
+      sphere.rotation.y = t * 0.55;
+      sphere.rotation.x = Math.sin(t * 0.3) * 0.25;
+      lines.rotation.y  = t * 0.55;
+      lines.rotation.x  = Math.sin(t * 0.3) * 0.25;
+      /* Pulsation de taille */
+      mat.size = 0.045 + Math.sin(t * 1.8) * 0.008;
+      mat.opacity = 0.85 + Math.sin(t * 2.1) * 0.12;
+      renderer.render(scene, camera);
+    };
+    animate();
+
+    return () => {
+      cancelAnimationFrame(frame);
+      renderer.dispose();
+      geo.dispose(); mat.dispose();
+      lineGeo.dispose(); lineMat.dispose();
+    };
+  }, []);
+
+  /* ── Timers splash ── */
+  useEffect(() => {
+    const timers = STEPS.map(s => setTimeout(() => setStatus(s.msg), s.t));
+    const fadeTimer = setTimeout(() => setFading(true), 3200);
+    const doneTimer = setTimeout(() => onDone(), 3900);
+    return () => { timers.forEach(clearTimeout); clearTimeout(fadeTimer); clearTimeout(doneTimer); };
+  }, []);
+
+  return (
+    <div className={`splash ${fading ? "fade-out" : ""}`}>
+      {/* Canvas Three.js en arrière-plan */}
+      <canvas ref={canvasRef} style={{
+        position:"absolute", inset:0, width:"100%", height:"100%", zIndex:0, pointerEvents:"none"
+      }}/>
+
+      {/* Cercles décoratifs flous */}
+      <div className="splash-circle c1"/>
+      <div className="splash-circle c2"/>
+      <div className="splash-circle c3"/>
+
+      {/* Logo + titre */}
+      <div className="splash-logo" style={{position:"relative",zIndex:2}}>
+        <div className="splash-icon-wrap">🌿</div>
+        <div className="splash-title">PlantAI</div>
+        <div className="splash-subtitle">Détection intelligente des maladies des plantes</div>
+      </div>
+
+      {/* Barre de progression */}
+      <div className="splash-bar-wrap" style={{position:"relative",zIndex:2}}>
+        <div className="splash-bar-track">
+          <div className="splash-bar-fill"/>
+        </div>
+        <div className="splash-status">{status}</div>
+      </div>
+
+      {/* Tags technos */}
+      <div className="splash-tags" style={{position:"relative",zIndex:2}}>
+        <span className="splash-tag">📡 ESP32-CAM</span>
+        <span className="splash-tag">🤖 YOLOv8</span>
+        <span className="splash-tag">🐍 Flask</span>
+        <span className="splash-tag">🍃 MongoDB</span>
+        <span className="splash-tag">⚛️ React</span>
+        <span className="splash-tag">🔵 Three.js</span>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════ LOGIN PAGE ══════════════ */
+function LoginPage({ onLogin /* onLogin(email) */ }) {
+  const [email,       setEmail]       = useState("");
+  const [password,    setPassword]    = useState("");
+  const [showPw,      setShowPw]      = useState(false);
+  const [remember,    setRemember]    = useState(false);
+  const [loading,     setLoading]     = useState(false);
+  const [error,       setError]       = useState("");
+  const particlesCanvasRef = useRef();
+
+  useEffect(() => {
+    var THREE = window.THREE;
+    if (!THREE || !particlesCanvasRef.current) return;
+    var canvas = particlesCanvasRef.current;
+    var W = canvas.offsetWidth || 480;
+    var H = canvas.offsetHeight || 600;
+    canvas.width = W; canvas.height = H;
+
+    var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+    renderer.setSize(W, H);
+    renderer.setClearColor(0x000000, 0);
+
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(55, W / H, 0.1, 200);
+    camera.position.z = 28;
+
+    /* ── Particules flottantes ── */
+    var N = 160;
+    var positions = new Float32Array(N * 3);
+    var velocities = [];
+    var sizes = new Float32Array(N);
+    var opacities = new Float32Array(N);
+
+    for (var i = 0; i < N; i++) {
+      positions[i*3]   = (Math.random() - 0.5) * 40;
+      positions[i*3+1] = (Math.random() - 0.5) * 50;
+      positions[i*3+2] = (Math.random() - 0.5) * 20;
+      velocities.push({
+        x: (Math.random() - 0.5) * 0.012,
+        y: Math.random() * 0.018 + 0.005,
+        z: (Math.random() - 0.5) * 0.006,
+        phase: Math.random() * Math.PI * 2,
+        speed: Math.random() * 0.4 + 0.3
+      });
+      sizes[i]    = Math.random() * 0.10 + 0.035;
+      opacities[i] = Math.random() * 0.5 + 0.25;
+    }
+
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+    var mat = new THREE.PointsMaterial({
+      color: 0xffffff, size: 0.12,
+      transparent: true, opacity: 0.55,
+      sizeAttenuation: true, depthWrite: false
+    });
+
+    var points = new THREE.Points(geo, mat);
+    scene.add(points);
+
+    /* ── Quelques lignes reliant les particules proches ── */
+    var lineGeo = new THREE.BufferGeometry();
+    var linePts = [];
+    for (var a = 0; a < N; a++) {
+      for (var b = a+1; b < N; b++) {
+        var dx = positions[a*3] - positions[b*3];
+        var dy = positions[a*3+1] - positions[b*3+1];
+        var dz = positions[a*3+2] - positions[b*3+2];
+        var dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+        if (dist < 8) {
+          linePts.push(positions[a*3], positions[a*3+1], positions[a*3+2]);
+          linePts.push(positions[b*3], positions[b*3+1], positions[b*3+2]);
+        }
+      }
+    }
+    if (linePts.length > 0) {
+      lineGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(linePts), 3));
+      var lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.1 });
+      scene.add(new THREE.LineSegments(lineGeo, lineMat));
+    }
+
+    var animId;
+    var t = 0;
+    var posArr = geo.attributes.position.array;
+
+    function animate() {
+      animId = requestAnimationFrame(animate);
+      t += 0.016;
+      for (var k = 0; k < N; k++) {
+        var v = velocities[k];
+        posArr[k*3]   += v.x + Math.sin(t * v.speed + v.phase) * 0.003;
+        posArr[k*3+1] += v.y;
+        posArr[k*3+2] += v.z + Math.cos(t * v.speed * 0.7 + v.phase) * 0.003;
+        /* reboucle en haut → réapparaît en bas */
+        if (posArr[k*3+1] > 26) posArr[k*3+1] = -26;
+        if (posArr[k*3]   >  22) posArr[k*3]   = -22;
+        if (posArr[k*3]   < -22) posArr[k*3]   =  22;
+      }
+      geo.attributes.position.needsUpdate = true;
+      /* légère pulsation de l'opacité globale */
+      mat.opacity = 0.5 + Math.sin(t * 0.8) * 0.1;
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    return function () {
+      cancelAnimationFrame(animId);
+      renderer.dispose();
+    };
+  }, []);
+
+  const DEMO_EMAIL    = "etudiant@plantai.fr";
+  const DEMO_PASSWORD = "plantai2026";
+
+  const validate = () => {
+    if (!email.trim())    return "Veuillez saisir votre adresse e-mail.";
+    if (!/\S+@\S+\.\S+/.test(email)) return "Format d'e-mail invalide.";
+    if (!password)        return "Veuillez saisir votre mot de passe.";
+    if (password.length < 6) return "Le mot de passe doit contenir au moins 6 caractères.";
+    return "";
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const err = validate();
+    if (err) { setError(err); return; }
+    setError(""); setLoading(true);
+    // Simulation délai réseau sans async/await (compatible Babel standalone)
+    setTimeout(() => {
+      if (password.trim() === DEMO_PASSWORD) {
+        setLoading(false);
+        onLogin(email.trim());
+      } else {
+        setLoading(false);
+        setError("Mot de passe incorrect. Entrez : plantai2026");
+      }
+    }, 1200);
+  };
+
+  const fillDemo = () => { setEmail(DEMO_EMAIL); setPassword(DEMO_PASSWORD); setError(""); };
+
+  return (
+    <div className="login-page">
+
+      {/* ── Panneau gauche ── */}
+      <div className="login-left">
+        <canvas ref={particlesCanvasRef} className="login-particles-canvas"/>
+        <div className="login-left-circle1"/>
+        <div className="login-left-circle2"/>
+        <div className="login-left-content">
+          <div className="login-left-icon">🌿</div>
+          <h2>Détection Intelligente des Maladies des Plantes</h2>
+          <p>Plateforme IoT connectée à l'ESP32-CAM — analyses IA en temps réel avec modèle CNN/YOLO.</p>
+          <div className="login-features">
+            <div className="login-feature">
+              <span className="login-feature-icon">🤖</span>
+              <div className="login-feature-text">
+                <strong>Modèle CNN / YOLO</strong>
+                <span>Détection précise sur dataset PlantVillage</span>
+              </div>
+            </div>
+            <div className="login-feature">
+              <span className="login-feature-icon">📡</span>
+              <div className="login-feature-text">
+                <strong>ESP32-CAM en temps réel</strong>
+                <span>Capteurs température, humidité, sol, lumière</span>
+              </div>
+            </div>
+            <div className="login-feature">
+              <span className="login-feature-icon">📊</span>
+              <div className="login-feature-text">
+                <strong>Dashboard analytique</strong>
+                <span>Graphiques, alertes critiques, export PDF</span>
+              </div>
+            </div>
+            <div className="login-feature">
+              <span className="login-feature-icon">🗄️</span>
+              <div className="login-feature-text">
+                <strong>Backend Flask + MongoDB</strong>
+                <span>Historique persistant & API REST</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Panneau droit ── */}
+      <div className="login-right">
+        <div className="login-form-wrap">
+
+          {/* Logo */}
+          <div className="login-logo">
+            <div className="login-logo-icon">🌿</div>
+            <div className="login-logo-text">
+              <h1>PlantAI</h1>
+              <p>Student Plant Monitor</p>
+            </div>
+          </div>
+
+          <div className="login-title">Bon retour 👋</div>
+          <div className="login-sub">Connectez-vous pour accéder au tableau de bord.</div>
+
+          {/* Erreur */}
+          {error && (
+            <div className="login-error" key={error}>
+              <span>⚠️</span> {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} noValidate>
+
+            {/* Email */}
+            <div className="login-field">
+              <label htmlFor="lp-email">Adresse e-mail</label>
+              <div className="login-input-wrap">
+                <span className="login-input-icon">✉️</span>
+                <input
+                  id="lp-email"
+                  type="email"
+                  className={`login-input ${error && !email.trim() ? "error" : ""}`}
+                  placeholder="vous@exemple.fr"
+                  value={email}
+                  onChange={e=>{ setEmail(e.target.value); setError(""); }}
+                  autoComplete="email"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {/* Mot de passe */}
+            <div className="login-field">
+              <label htmlFor="lp-pw">Mot de passe</label>
+              <div className="login-input-wrap">
+                <span className="login-input-icon">🔒</span>
+                <input
+                  id="lp-pw"
+                  type={showPw ? "text" : "password"}
+                  className={`login-input ${error && email && !password ? "error" : ""}`}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={e=>{ setPassword(e.target.value); setError(""); }}
+                  autoComplete="current-password"
+                />
+                <button type="button" className="login-pw-toggle" onClick={()=>setShowPw(p=>!p)} tabIndex={-1}>
+                  {showPw ? "🙈" : "👁️"}
+                </button>
+              </div>
+            </div>
+
+            {/* Se souvenir */}
+            <label className="login-remember">
+              <input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)}/>
+              Se souvenir de moi
+            </label>
+
+            {/* Bouton */}
+            <button type="submit" className="btn-login" disabled={loading}>
+              {loading
+                ? <><span className="spinner"/>&nbsp;Connexion en cours…</>
+                : "🚀 Se connecter"
+              }
+            </button>
+
+          </form>
+
+          {/* Hint démonstration */}
+          <div className="login-hint" onClick={fillDemo} style={{cursor:"pointer"}} title="Cliquer pour remplir automatiquement">
+            <strong>🎓 Accès démonstration (cliquer pour remplir) :</strong><br/>
+            📧 Email : <strong>{DEMO_EMAIL}</strong><br/>
+            🔑 Mot de passe : <strong>{DEMO_PASSWORD}</strong>
+          </div>
+
+          <div className="login-footer">
+            Projet Tutoré 2026 · Groupe IoT PlantAI<br/>
+            <span style={{color:"var(--green-dark)",fontWeight:700}}>ESP32-CAM · CNN/YOLO · Flask · MongoDB</span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════ APP ══════════════ */
+function App() {
+  const [showSplash, setShowSplash] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userEmail,  setUserEmail]  = useState("");
+  const [darkMode,  setDarkMode]   = useState(false);
+  const [page,setPage]           = useState("dashboard");
+  const [imageSrc,setImageSrc]   = useState(null);
+  const [imageFile,setImageFile] = useState(null);
+  const [fileName,setFileName]   = useState(null);
+  const [loading,setLoading]     = useState(false);
+  const [result,setResult]       = useState(null);
+  const [history,setHistory]     = useState([]);
+  const [dragOver,setDragOver]   = useState(false);
+  const [now,setNow]             = useState(new Date());
+  const fileRef = useRef();
+  const {s:sensors, hist:sHist} = useSensors();
+
+  useEffect(()=>{ const id=setInterval(()=>setNow(new Date()),1000); return ()=>clearInterval(id); },[]);
+  useEffect(()=>{ document.body.classList.toggle("dark", darkMode); },[darkMode]);
+  useEffect(()=>{
+    if (!profileOpen) return;
+    const close = (e) => { if (!e.target.closest(".nav-profile")) setProfileOpen(false); };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  },[profileOpen]);
+
+  const total    = history.length;
+  const healthy  = history.filter(h=>h.niveau==="healthy").length;
+  const sick     = history.filter(h=>h.niveau==="sick").length;
+  const critical = history.filter(h=>h.niveau==="critical").length;
+  const avgConf  = total ? Math.round(history.reduce((a,b)=>a+b.score,0)/total) : 0;
+
+  const diseaseMap = history.reduce((a,h)=>{a[h.maladie]=(a[h.maladie]||0)+1;return a;},{});
+  const dL=Object.keys(diseaseMap), dV=Object.values(diseaseMap), dC=dL.map((_,i)=>COLORS[i%COLORS.length]);
+
+  const loadImg = f => {
+    if (!f?.type.startsWith("image/")) return;
+    setImageFile(f); setFileName(f.name); setResult(null);
+    const rd=new FileReader(); rd.onload=e=>setImageSrc(e.target.result); rd.readAsDataURL(f);
+  };
+
+  const analyze = async () => {
+    if (!imageFile) return;
+    setLoading(true); setResult(null);
+    try {
+      const fd = new FormData(); fd.append("image", imageFile);
+      const res = await fetch(`${API_URL}/api/predict`, { method:"POST", body:fd });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const raw = await res.json();
+      // Vérifier si le backend a renvoyé une erreur
+      if (raw.error) throw new Error(raw.error);
+      // Transformer la réponse YOLOv8 → format frontend
+      const data = transformBackendResponse(raw);
+      setResult(data);
+      setHistory(p=>{
+        var next=[{id:Date.now(),image:fileName,...data,date:new Date(),source:"api"},...p];
+        if(next.length===1) unlockAchievement('first_analysis',{icon:'🔬',title:'Première analyse !',desc:'Vous avez lancé votre 1ère détection IA.',xp:100});
+        if(next.length===5) unlockAchievement('five_analyses',{icon:'🏅',title:'5 analyses effectuées',desc:'Vous commencez à maîtriser PlantAI !',xp:200});
+        if(next.length===10) unlockAchievement('ten_analyses',{icon:'⭐',title:'Analyste expert',desc:'10 analyses réalisées. Impressionnant !',xp:500});
+        return next;
+      });
+      if (data.niveau==="critical") { setAlertModal(data); setAlertBar(data); }
+      else if (data.niveau==="sick") { showToast(`⚠️ Plante infectée : ${data.maladie} (${data.score}%)`,"error"); }
+      else {
+        showToast(`✅ Plante saine — Confiance : ${data.score}%`,"success");
+        fireConfetti();
+        unlockAchievement('first_healthy',{icon:'🌿',title:'Plante saine détectée !',desc:'Votre plante est en parfaite santé.',xp:50});
+      }
+    } catch(err) {
+      // Fallback mock si le backend est inaccessible
+      console.warn("Backend inaccessible, utilisation du mode démo :", err.message);
+      await new Promise(r=>setTimeout(r,1400));
+      const data = MOCK[Math.floor(Math.random()*MOCK.length)];
+      setResult(data); setHistory(p=>[{id:Date.now(),image:fileName,...data,date:new Date(),source:"mock"},...p]);
+      if (data.niveau==="critical") { setAlertModal(data); setAlertBar(data); }
+      else if (data.niveau==="sick") { showToast(`⚠️ [Démo] ${data.maladie} (${data.score}%)`,"error"); }
+      else {
+        showToast(`✅ [Démo] Plante saine — ${data.score}%`,"success");
+        fireConfetti();
+        unlockAchievement('first_healthy',{icon:'🌿',title:'Plante saine détectée !',desc:'Aucune maladie détectée.',xp:50});
+      }
+    } finally { setLoading(false); }
+  };
+
+  /* Banner props */
+  const healthColor = result ? (result.niveau==="healthy"?"green":result.niveau==="sick"?"orange":"red") : "green";
+  const healthIcon  = result ? (result.niveau==="healthy"?"✅":result.niveau==="sick"?"⚠️":"🚨") : "⏳";
+  const healthLabel = result ? result.maladie : "En attente…";
+  const healthSub   = loading ? "Analyse en cours — modèle CNN" : result ? `Analysé · Confiance : ${result.score}%` : "Soumettez une image pour démarrer";
+
+  const TABS = [{id:"dashboard",label:"📊 Dashboard"},{id:"analyse",label:"🔍 Analyser"},{id:"history",label:"🗂️ Historique"},{id:"stats",label:"📈 Statistiques"}];
+
+  /* ── Mobile menu ── */
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [cmdOpen,  setCmdOpen]  = useState(false);
+  const [achievement, setAchievement] = useState(null);
+  const achievedRef = useRef(new Set());
+  const fireConfetti = triggerConfetti;
+  const ticker = useTicker(result);
+  useScrollReveal(page);
+
+  /* Ctrl+K command palette */
+  useEffect(function(){
+    var handler=function(e){
+      if((e.ctrlKey||e.metaKey)&&e.key==='k'){e.preventDefault();setCmdOpen(function(o){return!o;});}
+      if(e.key==='Escape')setCmdOpen(false);
+    };
+    window.addEventListener('keydown',handler);
+    return function(){window.removeEventListener('keydown',handler);};
+  },[]);
+
+  /* Achievement trigger */
+  var unlockAchievement = function(id, data) {
+    if(achievedRef.current.has(id))return;
+    achievedRef.current.add(id);
+    setAchievement(data);
+    setTimeout(function(){setAchievement(null);},5000);
+  };
+
+  /* Ambient glow color based on health */
+  var ambientColor = result
+    ? (result.niveau==='healthy'?'rgba(29,185,84,0.15)':result.niveau==='critical'?'rgba(239,68,68,0.15)':'rgba(245,158,11,0.12)')
+    : 'rgba(29,185,84,0.08)';
+
+
+  /* ── Profil ── */
+  const [profileOpen, setProfileOpen] = useState(false);
+  const userName   = userEmail ? userEmail.split("@")[0].replace(/[._]/g," ").replace(/\b\w/g,c=>c.toUpperCase()) : "Étudiant";
+  const userInitials = userName.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+  const loginTime  = useRef(new Date());
+
+  /* ── Export PDF ── */
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [toast, setToast]           = useState(null);
+  const [alertModal, setAlertModal] = useState(null);
+  const [alertBar,   setAlertBar]   = useState(null);
+  const alertCount = history.filter(h=>h.niveau==="critical").length;
+
+  // Annotations
+  const [noteModal,  setNoteModal]  = useState(null);   // {id, maladie, date, note}
+  const [noteDraft,  setNoteDraft]  = useState("");
+
+  const openNote = (h) => { setNoteModal(h); setNoteDraft(h.note||""); };
+  const saveNote = () => {
+    setHistory(p => p.map(h => h.id===noteModal.id ? {...h, note: noteDraft.trim()} : h));
+    showToast("📝 Note enregistrée !");
+    setNoteModal(null);
+  };
+  const deleteNote = () => {
+    setHistory(p => p.map(h => h.id===noteModal.id ? {...h, note:""} : h));
+    showToast("🗑 Note supprimée");
+    setNoteModal(null);
+  };
+
+  const showToast = (msg, type="success") => {
+    setToast({msg, type});
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  const exportPDF = () => {
+    const { jsPDF } = window.jspdf;
+    if (!jsPDF) { showToast("jsPDF non disponible", "error"); return; }
+    setPdfLoading(true);
+    try {
+      const doc = new jsPDF({ orientation:"portrait", unit:"mm", format:"a4" });
+      const W = doc.internal.pageSize.getWidth();
+      let y = 0;
+
+      /* ── En-tête vert ── */
+      doc.setFillColor(29, 185, 84);
+      doc.rect(0, 0, W, 38, "F");
+      doc.setFillColor(13, 110, 46);
+      doc.rect(0, 32, W, 6, "F");
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(20); doc.setFont("helvetica","bold");
+      doc.text("🌿 PlantAI — Student Plant Monitor", 14, 16);
+      doc.setFontSize(9); doc.setFont("helvetica","normal");
+      doc.text("Rapport de détection des maladies des plantes · Projet Tutoré 2026", 14, 24);
+      doc.text(`Généré le : ${new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"2-digit",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit"})}`, 14, 31);
+      y = 50;
+
+      /* ── Section KPI ── */
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(12); doc.setFont("helvetica","bold");
+      doc.text("Résumé des Analyses", 14, y); y += 8;
+
+      const kpis = [
+        {label:"Total Analyses", val:String(total),   color:[29,185,84]},
+        {label:"Plantes Saines", val:String(healthy),  color:[22,163,74]},
+        {label:"Infectées",      val:String(sick),     color:[245,158,11]},
+        {label:"Critiques",      val:String(critical), color:[239,68,68]},
+      ];
+      const bw = (W - 28 - 9) / 4;
+      kpis.forEach((k, i) => {
+        const x = 14 + i*(bw+3);
+        doc.setFillColor(...k.color);
+        doc.roundedRect(x, y, bw, 20, 3, 3, "F");
+        doc.setTextColor(255,255,255);
+        doc.setFontSize(18); doc.setFont("helvetica","bold");
+        doc.text(k.val, x + bw/2, y+13, {align:"center"});
+        doc.setFontSize(7); doc.setFont("helvetica","normal");
+        doc.text(k.label, x + bw/2, y+19, {align:"center"});
+      });
+      y += 30;
+
+      /* ── Capteurs ── */
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(12); doc.setFont("helvetica","bold");
+      doc.text("État des Capteurs ESP32 (Valeurs actuelles)", 14, y); y += 8;
+
+      const sensorData = [
+        ["🌡️ Température", `${sensors.temp} °C`,     sensors.temp < 18?"Froid":sensors.temp>32?"Chaud":"Normal"],
+        ["💧 Humidité air",  `${sensors.humidity} %`, sensors.humidity<40?"Sec":sensors.humidity>80?"Saturé":"Normal"],
+        ["🌱 Humidité sol",  `${sensors.soil} %`,     sensors.soil<40?"Sec":sensors.soil>75?"Saturé":"Normal"],
+        ["☀️ Luminosité",    `${sensors.light} %`,    sensors.light<30?"Sombre":sensors.light>85?"Fort":"Normal"],
+      ];
+      doc.autoTable({
+        startY: y,
+        head: [["Capteur","Valeur","Statut"]],
+        body: sensorData,
+        theme: "grid",
+        headStyles: { fillColor:[29,185,84], textColor:255, fontStyle:"bold", fontSize:9 },
+        bodyStyles: { fontSize:9, textColor:[15,23,42] },
+        alternateRowStyles: { fillColor:[232,248,237] },
+        margin: { left:14, right:14 },
+        tableWidth: W - 28,
+      });
+      y = doc.lastAutoTable.finalY + 12;
+
+      /* ── Dernier diagnostic ── */
+      if (result) {
+        doc.setFontSize(12); doc.setFont("helvetica","bold"); doc.setTextColor(15,23,42);
+        doc.text("Dernier Diagnostic IA", 14, y); y += 8;
+        const statusColor = result.niveau==="healthy"?[29,185,84]:result.niveau==="sick"?[245,158,11]:[239,68,68];
+        doc.setFillColor(...statusColor);
+        doc.roundedRect(14, y, W-28, 18, 3, 3, "F");
+        doc.setTextColor(255,255,255);
+        doc.setFontSize(13); doc.setFont("helvetica","bold");
+        doc.text(result.maladie, 20, y+8);
+        doc.setFontSize(9); doc.setFont("helvetica","normal");
+        doc.text(`Confiance : ${result.score}%  ·  Statut : ${result.niveau==="healthy"?"Saine":result.niveau==="sick"?"Infectée":"Critique"}`, 20, y+15);
+        y += 26;
+        if (result.conseil) {
+          doc.setTextColor(13,110,46); doc.setFontSize(9); doc.setFont("helvetica","italic");
+          doc.text(`💡 ${result.conseil}`, 14, y, {maxWidth: W-28}); y += 14;
+        }
+      }
+
+      /* ── Historique ── */
+      if (history.length > 0) {
+        doc.setFontSize(12); doc.setFont("helvetica","bold"); doc.setTextColor(15,23,42);
+        doc.text("Historique des Analyses", 14, y); y += 6;
+        doc.autoTable({
+          startY: y,
+          head: [["#","Image","Maladie détectée","Confiance","Statut","Date","Note"]],
+          body: history.map((h,i) => [
+            String(history.length-i),
+            h.image||"image.jpg",
+            h.maladie,
+            `${h.score}%`,
+            h.niveau==="healthy"?"✓ Saine":h.niveau==="sick"?"⚠ Infectée":"✕ Critique",
+            h.date.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}),
+            h.note||"—",
+          ]),
+          theme: "striped",
+          headStyles: { fillColor:[15,23,42], textColor:255, fontStyle:"bold", fontSize:8 },
+          bodyStyles: { fontSize:8 },
+          alternateRowStyles: { fillColor:[247,249,252] },
+          margin: { left:14, right:14 },
+          tableWidth: W-28,
+          didParseCell: (data) => {
+            if (data.section==="body" && data.column.index===4) {
+              const v = data.cell.raw;
+              if (v.includes("Saine"))    data.cell.styles.textColor = [22,163,74];
+              if (v.includes("Infectée")) data.cell.styles.textColor = [217,119,6];
+              if (v.includes("Critique")) data.cell.styles.textColor = [220,38,38];
+            }
+          }
+        });
+      }
+
+      /* ── Pied de page ── */
+      const pages = doc.internal.getNumberOfPages();
+      for (let i=1; i<=pages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8); doc.setTextColor(148,163,184); doc.setFont("helvetica","normal");
+        doc.text(`PlantAI · Projet Tutoré 2026 · Page ${i}/${pages}`, W/2, doc.internal.pageSize.getHeight()-8, {align:"center"});
+        doc.setDrawColor(229,231,235); doc.line(14, doc.internal.pageSize.getHeight()-12, W-14, doc.internal.pageSize.getHeight()-12);
+      }
+
+      doc.save(`PlantAI_Rapport_${new Date().toLocaleDateString("fr-FR").replace(/\//g,"-")}.pdf`);
+      showToast("✅ Rapport PDF téléchargé !");
+    } catch(e) {
+      showToast("❌ Erreur lors de la génération du PDF", "error");
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  /* Splash screen au démarrage */
+  if (showSplash) return <SplashScreen onDone={()=>setShowSplash(false)}/>;
+
+  /* Page de connexion */
+  if (!isLoggedIn) return <LoginPage onLogin={(email)=>{ setUserEmail(email); setIsLoggedIn(true); }}/>;
+
+  return (<div className="dashboard-enter">
+    {/* ═══ GLOBAL EFFECTS ═══ */}
+    <CursorTrail/>
+    {/* Ambient glow */}
+    <div className="ambient-glow g1" style={{background:ambientColor}}/>
+    <div className="ambient-glow g2" style={{background:ambientColor,opacity:0.6}}/>
+    {/* Command Palette */}
+    {cmdOpen && <CommandPalette
+      onClose={function(){setCmdOpen(false);}}
+      onNavigate={function(p){setPage(p);}}
+      history={history}
+      darkMode={darkMode}
+      onToggleDark={function(){setDarkMode(function(d){return!d;});}}
+    />}
+    {/* Achievement Toast */}
+    {achievement && <AchievementToast data={achievement} onDone={function(){setAchievement(null);}}/>}
+
+    {/* ══ NAVBAR ══ */}
+    <nav className="navbar">
+      <div className="nav-brand">
+        <div className="nav-logo">🌿</div>
+        <div>
+          <div className="nav-title">Student Plant Monitor</div>
+          <div className="nav-subtitle">Détection intelligente des maladies</div>
+        </div>
+      </div>
+      {/* Hamburger mobile */}
+      <button className={`nav-hamburger ${menuOpen?"open":""}`} onClick={()=>setMenuOpen(p=>!p)} aria-label="Menu">
+        <span/><span/><span/>
+      </button>
+
+      <div className="nav-sep"/>
+      <div className="nav-tabs">
+        {TABS.map(t=>(
+          <button key={t.id} className={`nav-tab ${page===t.id?"active":""}`} onClick={()=>setPage(t.id)}>{t.label}</button>
+        ))}
+      </div>
+      <div className="nav-badge"><span className="pulse-dot"/>ESP32-CAM — Online</div>
+      <div className="live-ticker">
+        <span className="ticker-dot"/>
+        <span key={ticker.tick} className="ticker-text">{ticker.msg}</span>
+      </div>
+
+      {/* Badge alertes critiques */}
+      {alertCount > 0 && (
+        <div className="nav-badge" style={{background:"rgba(239,68,68,0.12)",borderColor:"#fca5a5",color:"#dc2626",cursor:"pointer"}}
+          onClick={()=>setPage("history")}>
+          🚨 Alertes <span className="alert-badge">{alertCount}</span>
+        </div>
+      )}
+
+      <button className="btn-pdf" onClick={function(){setCmdOpen(true);}} style={{background:"linear-gradient(135deg,#3b82f6,#1d4ed8)",boxShadow:"0 2px 8px rgba(59,130,246,0.3)"}}>
+        ⌕ Commandes <span style={{opacity:0.7,fontSize:"0.65rem",marginLeft:"2px"}}>Ctrl+K</span>
+      </button>
+      <button className="btn-pdf" onClick={exportPDF} disabled={pdfLoading}>
+        {pdfLoading ? "⏳ Génération..." : "📄 Exporter PDF"}
+      </button>
+      <div className="nav-time">{fmtTime(now)}</div>
+
+      {/* Bouton dark mode */}
+      <button className="btn-theme" onClick={()=>setDarkMode(p=>!p)} title={darkMode?"Mode clair":"Mode sombre"}>
+        {darkMode ? "☀️" : "🌙"}
+      </button>
+
+      {/* ── Profil utilisateur ── */}
+      <div className="nav-profile">
+        <button className="nav-profile-btn" onClick={()=>setProfileOpen(p=>!p)}>
+          <div className="nav-avatar">{userInitials}</div>
+          <div style={{textAlign:"left"}}>
+            <div className="nav-profile-name">{userName}</div>
+            <div className="nav-profile-role">Étudiant IoT</div>
+          </div>
+          <span className={`nav-chevron ${profileOpen?"open":""}`}>▼</span>
+        </button>
+
+        {profileOpen && (
+          <div className="profile-dropdown">
+            {/* En-tête vert */}
+            <div className="pd-header">
+              <div className="pd-avatar-lg">{userInitials}</div>
+              <div>
+                <div className="pd-name">{userName}</div>
+                <div className="pd-email">{userEmail}</div>
+                <span className="pd-role-badge">🎓 Projet Tutoré 2026</span>
+              </div>
+            </div>
+
+            {/* Stats rapides */}
+            <div className="pd-stats">
+              <div>
+                <div className="pd-stat-val">{total}</div>
+                <div className="pd-stat-label">Analyses</div>
+              </div>
+              <div>
+                <div className="pd-stat-val" style={{color:"#1db954"}}>{healthy}</div>
+                <div className="pd-stat-label">Saines</div>
+              </div>
+              <div>
+                <div className="pd-stat-val" style={{color:"#ef4444"}}>{critical}</div>
+                <div className="pd-stat-label">Critiques</div>
+              </div>
+            </div>
+
+            <div className="pd-body">
+              <div className="pd-item" onClick={()=>{ setProfileOpen(false); setPage("dashboard"); }}>
+                <span className="pd-item-icon">📊</span> Dashboard
+              </div>
+              <div className="pd-item" onClick={()=>{ setProfileOpen(false); setPage("history"); }}>
+                <span className="pd-item-icon">🗂️</span> Historique des analyses
+              </div>
+              <div className="pd-item" onClick={()=>{ setDarkMode(p=>!p); setProfileOpen(false); }}>
+                <span className="pd-item-icon">{darkMode?"☀️":"🌙"}</span>
+                {darkMode ? "Mode clair" : "Mode sombre"}
+              </div>
+              <div className="pd-sep"/>
+              <div className="pd-item" style={{fontSize:"0.75rem",color:"var(--text3)",cursor:"default",pointerEvents:"none"}}>
+                <span className="pd-item-icon">⏱️</span>
+                Connecté depuis {Math.round((new Date()-loginTime.current)/60000)||"<1"} min
+              </div>
+              <div className="pd-sep"/>
+              <div className="pd-item danger" onClick={()=>{ setProfileOpen(false); setIsLoggedIn(false); setUserEmail(""); }}>
+                <span className="pd-item-icon">🚪</span> Se déconnecter
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </nav>
+
+    {/* ═══ KEYBOARD HINT BAR ═══ */}
+    <div className="kb-bar">
+      <span><kbd>Ctrl</kbd>+<kbd>K</kbd> Palette de commandes</span>
+      <span className="kb-bar-sep">·</span>
+      <span><kbd>Ctrl</kbd>+<kbd>D</kbd> Dark mode</span>
+      <span className="kb-bar-sep">·</span>
+      <span><kbd>Ctrl</kbd>+<kbd>P</kbd> Exporter PDF</span>
+      <span style={{marginLeft:"auto",color:"var(--green-dark)",fontWeight:700}}>PlantAI v2.0 · ESP32-CAM · YOLOv8 · Flask</span>
+    </div>
+
+    {/* ══ MENU MOBILE ══ */}
+    <div className={`mobile-menu ${menuOpen?"open":""}`}>
+      {TABS.map(t=>(
+        <button key={t.id} className={`mobile-tab ${page===t.id?"active":""}`}
+          onClick={()=>{ setPage(t.id); setMenuOpen(false); }}>
+          {t.label}
+        </button>
+      ))}
+      <div className="mobile-menu-sep"/>
+      <div className="mobile-menu-row">
+        <button className="mobile-tab" onClick={()=>{ setDarkMode(p=>!p); setMenuOpen(false); }}>
+          {darkMode?"☀️ Mode clair":"🌙 Mode sombre"}
+        </button>
+        <button className="mobile-tab" style={{color:"#dc2626"}}
+          onClick={()=>{ setMenuOpen(false); exportPDF(); }}>
+          📄 PDF
+        </button>
+      </div>
+      <div className="mobile-menu-sep"/>
+      <button className="mobile-tab" style={{color:"#dc2626"}}
+        onClick={()=>{ setMenuOpen(false); setIsLoggedIn(false); setUserEmail(""); }}>
+        🚪 Se déconnecter
+      </button>
+    </div>
+
+    {/* Barre d'alerte sticky */}
+    {alertBar && (
+      <div className="alert-bar">
+        <span>🚨</span>
+        <strong>ALERTE CRITIQUE</strong> — {alertBar.maladie} détectée avec {alertBar.score}% de confiance. Action immédiate requise !
+        <button className="alert-bar-close" onClick={()=>setAlertBar(null)}>✕ Fermer</button>
+      </div>
+    )}
+
+    {/* Modal alerte critique */}
+    {alertModal && (
+      <div className="alert-overlay" onClick={()=>setAlertModal(null)}>
+        <div className="alert-modal" onClick={e=>e.stopPropagation()}>
+          <div className={`alert-header ${alertModal.niveau}`}>
+            <div className="alert-icon-wrap">🚨</div>
+            <div className="alert-header-text">
+              <h3>ALERTE — Maladie Critique Détectée !</h3>
+              <p>Le modèle IA a identifié une pathologie sévère nécessitant une intervention immédiate.</p>
+            </div>
+          </div>
+          <div className="alert-body">
+            <div className="alert-disease">
+              {alertModal.maladie}
+            </div>
+            <div className="alert-conf">
+              Confiance du modèle :
+              <div className="alert-conf-bar">
+                <div className="alert-conf-fill" style={{width:`${alertModal.score}%`, background:"#ef4444"}}/>
+              </div>
+              <strong style={{color:"#ef4444"}}>{alertModal.score}%</strong>
+            </div>
+            {alertModal.conseil && (
+              <div className={`alert-conseil ${alertModal.niveau}`}>
+                ⚠️ <strong>Action recommandée :</strong> {alertModal.conseil}
+              </div>
+            )}
+            <div className="alert-actions">
+              <button className="alert-btn-dismiss" onClick={()=>setAlertModal(null)}>
+                Ignorer
+              </button>
+              <button className="alert-btn-view" onClick={()=>{setAlertModal(null);setPage("history");}}>
+                📋 Voir l'historique
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Modal annotation */}
+    {noteModal && (
+      <div className="note-modal-overlay" onClick={()=>setNoteModal(null)}>
+        <div className="note-modal" onClick={e=>e.stopPropagation()}>
+          <div className="note-modal-head">
+            <div>
+              <div className="note-modal-title">📝 Annoter l'analyse</div>
+              <div className="note-modal-sub">Ajoute une note personnelle sur ce résultat</div>
+            </div>
+            <button className="note-modal-close" onClick={()=>setNoteModal(null)}>✕</button>
+          </div>
+          <div className="note-modal-body">
+            <div className="note-disease-info">
+              <span className="note-disease-icon">
+                {noteModal.niveau==="healthy"?"✅":noteModal.niveau==="sick"?"⚠️":"🚨"}
+              </span>
+              <div>
+                <div className="note-disease-name">{noteModal.maladie}</div>
+                <div className="note-disease-date">{fmtFull(noteModal.date)} · Confiance : {noteModal.score}%</div>
+              </div>
+            </div>
+            <textarea
+              className="note-textarea"
+              placeholder="Ex : Feuille prélevée dans la parcelle B3 — traitement au cuivre appliqué le lendemain..."
+              value={noteDraft}
+              onChange={e=>setNoteDraft(e.target.value.slice(0,300))}
+              autoFocus
+            />
+            <div className="note-char-count">{noteDraft.length} / 300 caractères</div>
+            <div className="note-actions">
+              {noteModal.note && (
+                <button className="note-btn-cancel" style={{color:"#dc2626",borderColor:"#fca5a5"}} onClick={deleteNote}>
+                  🗑 Supprimer
+                </button>
+              )}
+              <button className="note-btn-cancel" onClick={()=>setNoteModal(null)}>Annuler</button>
+              <button className="note-btn-save" onClick={saveNote} disabled={!noteDraft.trim()}>
+                💾 Enregistrer
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Toast */}
+    {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
+
+    {/* ══ PAGE ══ */}
+    <div className="page">
+
+      {/* ════ DASHBOARD ════ */}
+      {page==="dashboard" && <>
+
+        {/* Hero banners */}
+        <div className="section-title">État de la Plante</div>
+        <div className="hero-grid" style={{marginBottom:"20px"}}>
+
+          {/* Plant Health */}
+          <TiltCard className={`hero-banner ${healthColor}`}>
+            <div className="hb-bg-circle c1"/><div className="hb-bg-circle c2"/>
+            <div className="hb-label"><span className="pulse-dot" style={{background:"rgba(255,255,255,0.8)"}}/> PLANT HEALTH</div>
+            <div className="hb-value">{loading?"Processing…":healthLabel}</div>
+            <div className="hb-sub">{healthSub}</div>
+            <div className="hb-pill">
+              {healthIcon} {result?(result.niveau==="healthy"?"Saine":result.niveau==="sick"?"Infectée":"Critique"):"En attente"}
+            </div>
+            {result && (
+              <div className="hb-conf">
+                <div className="hb-conf-val"><AnimatedNumber value={result.score} suffix="%" decimals={0}/></div>
+                <div className="hb-conf-label">Confidence IA</div>
+              </div>
+            )}
+          </TiltCard>
+
+          {/* Soil + Temp side */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"16px"}}>
+            <TiltCard className="hero-banner teal">
+              <div className="hb-bg-circle c1"/><div className="hb-bg-circle c2"/>
+              <div className="hb-label">💧 SOIL MOIST</div>
+              <div className="hb-value"><AnimatedNumber value={sensors.soil} suffix="%" decimals={0}/></div>
+              <div className="hb-sub">{sensors.soil<40?"Sol trop sec":sensors.soil>75?"Sol saturé":"Humidité optimale"}</div>
+              <div className="hb-pill">🌱 Capteur sol</div>
+            </TiltCard>
+            <TiltCard className="hero-banner orange">
+              <div className="hb-bg-circle c1"/><div className="hb-bg-circle c2"/>
+              <div className="hb-label">🌡️ TEMPÉRATURE</div>
+              <div className="hb-value"><AnimatedNumber value={sensors.temp} suffix="°C" decimals={1}/></div>
+              <div className="hb-sub">{sensors.temp<18?"Trop froid":sensors.temp>32?"Trop chaud":"Température idéale"}</div>
+              <div className="hb-pill">📡 ESP32</div>
+            </TiltCard>
+            <TiltCard className="hero-banner" style={{background:"linear-gradient(135deg,#8b5cf6,#6d28d9)",boxShadow:"0 8px 32px rgba(139,92,246,0.22)"}}>
+              <div className="hb-bg-circle c1"/><div className="hb-bg-circle c2"/>
+              <div className="hb-label">💧 HUMIDITÉ AIR</div>
+              <div className="hb-value"><AnimatedNumber value={sensors.humidity} suffix="%" decimals={0}/></div>
+              <div className="hb-sub">{sensors.humidity<40?"Air sec":sensors.humidity>80?"Trop humide":"Humidité correcte"}</div>
+              <div className="hb-pill">🌫️ Capteur DHT22</div>
+            </TiltCard>
+            <TiltCard className="hero-banner" style={{background:"linear-gradient(135deg,#eab308,#a16207)",boxShadow:"0 8px 32px rgba(234,179,8,0.22)"}}>
+              <div className="hb-bg-circle c1"/><div className="hb-bg-circle c2"/>
+              <div className="hb-label">☀️ LUMINOSITÉ</div>
+              <div className="hb-value"><AnimatedNumber value={sensors.light} suffix="%" decimals={0}/></div>
+              <div className="hb-sub">{sensors.light<30?"Trop sombre":sensors.light>85?"Trop lumineux":"Luminosité idéale"}</div>
+              <div className="hb-pill">🔆 Capteur LDR</div>
+            </TiltCard>
+          </div>
+        </div>
+
+        {/* Sparklines row — style image */}
+        <div className="section-title">Tendances Capteurs</div>
+        <div className="charts-row reveal rv2">
+          <div className="chart-card">
+            <div className="cc-head">
+              <div className="cc-title">📈 Activité Multi-Capteurs</div>
+              <div className="cc-period">Live</div>
+            </div>
+            <div className="cc-sub">Température · Humidité · Sol — mise à jour toutes les 2,5s</div>
+            <div style={{height:"130px",position:"relative"}}>
+              <MultiLine height={130} labels={sHist.labels} datasets={[
+                {label:"Temp (°C)", data:sHist.temp, color:"#f59e0b"},
+                {label:"Humidité (%)", data:sHist.hum, color:"#3b82f6"},
+                {label:"Sol (%)", data:sHist.soil, color:"#1db954"},
+              ]}/>
+            </div>
+          </div>
+          {[
+            {title:"Température",icon:"🌡️",val:sensors.temp,valSuf:"°C",valDec:1,sub:"past 3min",data:sHist.temp,color:"#f59e0b"},
+            {title:"Humidity",   icon:"💧",val:sensors.humidity,valSuf:"%",valDec:0,sub:"past 3min",data:sHist.hum, color:"#3b82f6"},
+            {title:"Soil Moist", icon:"🌱",val:sensors.soil,valSuf:"%",valDec:0,   sub:"past 3min",data:sHist.soil,color:"#1db954"},
+          ].map(s=>(
+            <div className="chart-card" key={s.title}>
+              <div className="cc-head">
+                <div className="cc-title">{s.icon} {s.title}</div>
+                <div className="cc-period">{s.sub}</div>
+              </div>
+              <div className="cc-val" style={{color:s.color}}><AnimatedNumber value={s.val} suffix={s.valSuf||""} decimals={s.valDec}/></div>
+              <div className="cc-sub">Valeur actuelle du capteur</div>
+              <div className="sparkline-wrap"><Sparkline data={s.data} color={s.color} fill={true}/></div>
+            </div>
+          ))}
+        </div>
+
+        {/* Stats + Charts */}
+        <div className="section-title">Analyses IA</div>
+        <div className="metrics-row reveal">
+          {[
+            {icon:"📋",bg:"#e8f8ed",color:"#1db954",val:total,    label:"Total Analyses", trend:total?"Session en cours":"—",dir:"flat"},
+            {icon:"✅",bg:"#f0fdf4",color:"#16a34a",val:healthy,  label:"Plantes Saines", trend:total?`${Math.round(healthy/total*100)}% du total`:"—",dir:"up"},
+            {icon:"⚠️",bg:"#fef9c3",color:"#d97706",val:sick,     label:"Infectées",      trend:total?`${Math.round(sick/total*100)}% du total`:"—",dir:sick?"down":"flat"},
+            {icon:"🚨",bg:"#fee2e2",color:"#dc2626",val:critical, label:"Critiques",      trend:`Conf. moy. ${avgConf}%`,dir:critical?"down":"flat"},
+          ].map(k=>(
+            <div className="metric-card" key={k.label}>
+              <div className="metric-icon" style={{background:k.bg,fontSize:"1.3rem"}}>{k.icon}</div>
+              <div>
+                <div className="metric-val" style={{color:k.color}}><AnimatedNumber value={k.val}/></div>
+                <div className="metric-label">{k.label}</div>
+                <div className={`metric-trend ${k.dir==="up"?"trend-up":k.dir==="down"?"trend-down":"trend-flat"}`}>{k.trend}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {total===0 ? (
+          <div className="chart-card">
+            <div className="empty-box">
+              <div className="e-icon">🌱</div>
+              <p style={{fontSize:"0.88rem",marginBottom:"4px"}}>Aucune analyse disponible.</p>
+              <p style={{fontSize:"0.78rem"}}><span className="e-link" onClick={()=>setPage("analyse")}>→ Lancer votre première analyse</span></p>
+            </div>
+          </div>
+        ) : (
+          <div className="bottom-grid reveal rv3">
+            <div className="chart-card span2">
+              <div className="cc-head"><div className="cc-title">🍩 Répartition des Maladies Détectées</div></div>
+              <div className="cc-sub">Distribution par type de pathologie — session courante</div>
+              <div style={{height:"200px",position:"relative"}}><Donut data={dV} labels={dL} colors={dC}/></div>
+            </div>
+            <div className="chart-card">
+              <div className="cc-head"><div className="cc-title">📋 Classement</div></div>
+              <div className="cc-sub">Occurrences par maladie</div>
+              {dL.map((d,i)=>(
+                <div className="dl-item" key={d}>
+                  <div className="dl-dot" style={{background:dC[i]}}/>
+                  <div className="dl-name">{d}</div>
+                  <div className="dl-bar-bg"><div className="dl-bar" style={{width:`${Math.round(dV[i]/total*100)}%`,background:dC[i]}}/></div>
+                  <div className="dl-cnt">{dV[i]}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </>}
+
+      {/* ════ ANALYSER ════ */}
+      {page==="analyse" && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"16px"}}>
+          <div className="chart-card">
+            <div className="cc-title" style={{marginBottom:"4px"}}>📷 Image de la Feuille</div>
+            <div className="cc-sub">Photo via ESP32-CAM ou upload manuel</div>
+            <div
+              className={`upload-zone ${dragOver?"over":""}`}
+              onDrop={e=>{e.preventDefault();setDragOver(false);loadImg(e.dataTransfer.files[0]);}}
+              onDragOver={e=>{e.preventDefault();setDragOver(true);}}
+              onDragLeave={()=>setDragOver(false)}
+              onClick={()=>fileRef.current.click()}
+            >
+              <input type="file" accept="image/*" ref={fileRef} onChange={e=>loadImg(e.target.files[0])}/>
+              {imageSrc
+                ? <div className={loading?"scan-wrap":""}>
+                    <img src={imageSrc} className="preview-img" alt="Aperçu" style={{display:"block",width:"100%"}}/>
+                    {loading && <>
+                      <div className="scan-beam"/>
+                      <div className="scan-grid"/>
+                      <div className="scan-corner tl"/><div className="scan-corner tr"/>
+                      <div className="scan-corner bl"/><div className="scan-corner br"/>
+                      <div className="scan-label">⬛ SCANNING… CNN INFERENCE</div>
+                    </>}
+                  </div>
+                : <><div className="uz-icon">🍃</div><div className="uz-text"><p><strong>Glissez-déposez</strong> ou <strong>cliquez</strong><br/>pour sélectionner une image<br/><span style={{fontSize:"0.72rem",color:"#94a3b8"}}>JPG · PNG · WEBP</span></p></div></>
+              }
+            </div>
+            {fileName && <p style={{fontSize:"0.72rem",color:"var(--text3)",marginTop:"7px",textAlign:"center"}}>📎 {fileName}</p>}
+            <button className="btn-primary" onClick={analyze} disabled={!imageSrc||loading}>
+              {loading?<><div className="spinner"/>Inférence CNN…</>:<>🔍 Lancer la détection IA</>}
+            </button>
+          </div>
+
+          <div className="chart-card">
+            <div className="cc-title" style={{marginBottom:"4px"}}>🧠 Diagnostic IA</div>
+            <div className="cc-sub">Modèle CNN entraîné sur PlantVillage Dataset</div>
+            {!result&&!loading && <div className="result-idle"><span style={{fontSize:"2.5rem",opacity:.3}}>🌿</span><p>Soumettez une image<br/>pour obtenir le diagnostic.</p></div>}
+            {loading && <div className="result-idle"><span style={{fontSize:"2rem"}}>⚙️</span><p style={{lineHeight:1.7}}>Inférence en cours…<br/><span style={{fontSize:"0.72rem",color:"var(--text3)"}}>Le modèle CNN analyse l'image</span></p></div>}
+            {result&&!loading && (
+              <div className="result-card">
+                <div className={`rc-header ${result.niveau}`}>
+                  <span style={{fontSize:"1.4rem"}}>{result.niveau==="healthy"?"✅":result.niveau==="sick"?"⚠️":"🚨"}</span>
+                  <div className="rc-header-name">{result.maladie}</div>
+                </div>
+                <div className="rc-body">
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:"20px",padding:"10px 0 6px"}}>
+                    <ArcGauge value={result.score} color={bcolor(result.niveau)} size={120}/>
+                    <div>
+                      <div style={{fontSize:"0.72rem",color:"var(--text3)",fontWeight:600,marginBottom:"6px",textTransform:"uppercase",letterSpacing:"1px"}}>Analyse IA</div>
+                      <div style={{fontSize:"0.78rem",color:"var(--text2)",lineHeight:1.6}}>
+                        Modèle : <strong style={{color:"var(--text)"}}>YOLOv8</strong><br/>
+                        Dataset : <strong style={{color:"var(--text)"}}>PlantVillage</strong><br/>
+                        Classes : <strong style={{color:"var(--text)"}}>38</strong>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="rc-row">
+                    <span className="rc-lbl">Statut phytosanitaire</span>
+                    <span className={`pill pill-${result.niveau}`}>{result.niveau==="healthy"?"Saine":result.niveau==="sick"?"Infectée":"Critique"}</span>
+                  </div>
+                  <div className="rc-row">
+                    <span className="rc-lbl">Source</span>
+                    <span className="rc-val" style={{fontSize:"0.72rem",color:"var(--text3)"}}>{fileName}</span>
+                  </div>
+                  {result.conseil&&<div className="rc-advice">💡 <strong>Recommandation :</strong> {result.conseil}</div>}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ════ HISTORIQUE ════ */}
+      {page==="history" && (
+        <div className="chart-card">
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"4px"}}>
+            <div className="cc-title">🗂️ Historique des Analyses</div>
+            {total>0&&<button onClick={()=>setHistory([])} style={{padding:"5px 12px",background:"#fee2e2",color:"#dc2626",border:"1.5px solid #fecaca",borderRadius:"8px",fontSize:"0.72rem",cursor:"pointer",fontWeight:700}}>🗑 Vider</button>}
+          </div>
+          <div className="cc-sub">{total} analyse{total>1?"s":""} enregistrée{total>1?"s":""} — session courante</div>
+          {total===0
+            ?<div className="empty-box"><div className="e-icon">📭</div><p>Aucune analyse.<br/><span className="e-link" onClick={()=>setPage("analyse")}>→ Lancer une analyse</span></p></div>
+            :<div className="tbl-scroll"><table>
+              <thead><tr><th>#</th><th>Image</th><th>Maladie</th><th>Confiance</th><th>Statut</th><th>Date</th><th>Note</th></tr></thead>
+              <tbody>
+                {history.map((h,i)=>(
+                  <tr key={h.id}>
+                    <td style={{color:"var(--text3)",fontWeight:700}}>{total-i}</td>
+                    <td style={{color:"var(--text3)"}}>🖼 {h.image||"image.jpg"}
+                      {h.source==="api" && <span style={{marginLeft:"5px",fontSize:"0.6rem",background:"#dcfce7",color:"#16a34a",borderRadius:"4px",padding:"1px 5px",fontWeight:700}}>API</span>}
+                      {h.source==="mock" && <span style={{marginLeft:"5px",fontSize:"0.6rem",background:"#fef9c3",color:"#92400e",borderRadius:"4px",padding:"1px 5px",fontWeight:700}}>Démo</span>}
+                    </td>
+                    <td className="td-bold">{h.maladie}</td>
+                    <td>
+                      <span style={{color:bcolor(h.niveau),fontWeight:800}}>{h.score}%</span>
+                      <div style={{background:"#f1f5f9",borderRadius:"4px",height:"4px",marginTop:"4px",width:"72px",overflow:"hidden"}}>
+                        <div style={{width:`${h.score}%`,height:"100%",borderRadius:"4px",background:bcolor(h.niveau)}}/>
+                      </div>
+                    </td>
+                    <td><span className={`pill pill-${h.niveau}`}>{h.niveau==="healthy"?"Saine":h.niveau==="sick"?"Infectée":"Critique"}</span></td>
+                    <td style={{color:"var(--text3)",fontSize:"0.72rem"}}>{fmtFull(h.date)}</td>
+                    <td>
+                      <button className={`btn-note ${h.note?"has-note":""}`} onClick={()=>openNote(h)}>
+                        {h.note ? "✏️ Voir" : "+ Note"}
+                      </button>
+                      {h.note && <div className="note-inline" title={h.note}>📝 {h.note}</div>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table></div>
+          }
+        </div>
+      )}
+
+      {/* ════ STATISTIQUES ════ */}
+      {page==="stats" && (()=>{
+
+        /* ── Calculs ── */
+        const healthScore = total === 0 ? 100 : Math.round((healthy / total) * 100);
+        const scoreColor  = healthScore >= 70 ? "#1db954" : healthScore >= 40 ? "#f59e0b" : "#ef4444";
+        const circumference = 2 * Math.PI * 52;
+        const dashOffset    = circumference - (healthScore / 100) * circumference;
+
+        const avgConf2    = total ? Math.round(history.reduce((a,b)=>a+b.score,0)/total) : 0;
+        const lastAnalysis= history[0];
+
+        /* Classement maladies */
+        const diseaseRank = Object.entries(
+          history.reduce((acc,h)=>{ acc[h.maladie]=(acc[h.maladie]||0)+1; return acc; },{})
+        ).sort((a,b)=>b[1]-a[1]);
+        const maxD = diseaseRank[0]?.[1] || 1;
+
+        /* Niveau par type */
+        const niveauMap = history.reduce((acc,h)=>{ acc[h.niveau]=(acc[h.niveau]||0)+1; return acc; },{});
+
+        /* Conseil global */
+        const globalTip = healthScore >= 80
+          ? "🌿 Excellente santé globale ! Continuez la surveillance régulière."
+          : healthScore >= 50
+          ? "⚠️ Quelques infections détectées. Appliquez les traitements recommandés et re-analysez dans 48h."
+          : "🚨 Situation critique. Consultez un agronome et isolez les plantes infectées immédiatement.";
+
+        return (<>
+          <div className="section-title">Vue d'ensemble analytique</div>
+
+          {/* KPI row */}
+          <div className="stats-kpi-row reveal">
+            <div className="stats-kpi">
+              <div className="stats-kpi-accent" style={{background:"linear-gradient(90deg,#1db954,#16a34a)"}}/>
+              <div className="stats-kpi-icon">🔬</div>
+              <div className="stats-kpi-val"><AnimatedNumber value={total}/></div>
+              <div className="stats-kpi-label">Total analyses</div>
+              <div className="stats-kpi-sub" style={{color:"var(--text3)"}}>Session courante</div>
+            </div>
+            <div className="stats-kpi">
+              <div className="stats-kpi-accent" style={{background:"linear-gradient(90deg,#1db954,#059669)"}}/>
+              <div className="stats-kpi-icon">✅</div>
+              <div className="stats-kpi-val" style={{color:"#1db954"}}><AnimatedNumber value={healthy} color="#1db954"/></div>
+              <div className="stats-kpi-label">Plantes saines</div>
+              <div className="stats-kpi-sub" style={{color:"#1db954"}}>
+                {total ? Math.round(healthy/total*100) : 0}% du total
+              </div>
+            </div>
+            <div className="stats-kpi">
+              <div className="stats-kpi-accent" style={{background:"linear-gradient(90deg,#f59e0b,#d97706)"}}/>
+              <div className="stats-kpi-icon">⚠️</div>
+              <div className="stats-kpi-val" style={{color:"#f59e0b"}}><AnimatedNumber value={sick} color="#f59e0b"/></div>
+              <div className="stats-kpi-label">Infectées</div>
+              <div className="stats-kpi-sub" style={{color:"#f59e0b"}}>
+                {total ? Math.round(sick/total*100) : 0}% du total
+              </div>
+            </div>
+            <div className="stats-kpi">
+              <div className="stats-kpi-accent" style={{background:"linear-gradient(90deg,#ef4444,#b91c1c)"}}/>
+              <div className="stats-kpi-icon">🚨</div>
+              <div className="stats-kpi-val" style={{color:"#ef4444"}}><AnimatedNumber value={critical} color="#ef4444"/></div>
+              <div className="stats-kpi-label">Critiques</div>
+              <div className="stats-kpi-sub" style={{color:"#ef4444"}}>
+                {total ? Math.round(critical/total*100) : 0}% du total
+              </div>
+            </div>
+          </div>
+
+          {/* Ligne 1 : Score santé + Donut + Graphique ligne */}
+          <div className="stats-grid-top">
+
+            {/* Graphique ligne historique */}
+            <div className="chart-card">
+              <div className="cc-head">
+                <div className="cc-title">📈 Évolution des analyses (session)</div>
+                <span className="cc-period">Temps réel</span>
+              </div>
+              <div className="cc-sub" style={{marginBottom:"10px"}}>Confiance moyenne des {total} dernières analyses</div>
+              {total === 0
+                ? <div className="empty-box" style={{minHeight:"180px"}}><div className="e-icon">📭</div><p>Lancez des analyses<br/>pour voir l'évolution</p></div>
+                : <div style={{height:"200px"}}><MultiLine
+                    labels={history.slice().reverse().map((_,i)=>`#${i+1}`)}
+                    datasets={[
+                      {label:"Confiance (%)", data:history.slice().reverse().map(h=>h.score), color:"#1db954"},
+                      {label:"Seuil critique (80%)", data:history.map(()=>80), color:"#ef4444"},
+                    ]}
+                    height={200}
+                  /></div>
+              }
+            </div>
+
+            {/* Score de santé global */}
+            <div className="chart-card" style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+              <div className="cc-title" style={{marginBottom:"4px",textAlign:"center"}}>🌿 Score de santé global</div>
+              <div className="cc-sub" style={{textAlign:"center",marginBottom:"12px"}}>Indice phytosanitaire de la session</div>
+              <div className="health-score-ring">
+                <svg width="120" height="120" viewBox="0 0 120 120">
+                  <circle className="ring-bg" cx="60" cy="60" r="52"/>
+                  <circle className="ring-fill"
+                    cx="60" cy="60" r="52"
+                    stroke={scoreColor}
+                    strokeDasharray={circumference}
+                    strokeDashoffset={dashOffset}
+                  />
+                </svg>
+                <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+                  <span style={{fontSize:"1.8rem",fontWeight:900,color:scoreColor,lineHeight:1}}><AnimatedNumber value={healthScore} suffix="%" color={scoreColor}/></span>
+                  <span style={{fontSize:"0.62rem",color:"var(--text3)",fontWeight:600,marginTop:2}}>SANTÉ</span>
+                </div>
+              </div>
+              <div style={{fontSize:"0.82rem",fontWeight:700,color:scoreColor,marginTop:"4px"}}>
+                {healthScore>=80?"Excellent":healthScore>=60?"Bon":healthScore>=40?"Moyen":"Critique"}
+              </div>
+              <div className="stats-tip" style={{marginTop:"12px",fontSize:"0.72rem"}}>
+                <span>💡</span><span>{globalTip}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Ligne 2 : Classement maladies + Répartition + Capteurs */}
+          <div className="stats-grid-bot">
+
+            {/* Classement maladies */}
+            <div className="chart-card">
+              <div className="cc-title" style={{marginBottom:"2px"}}>🦠 Maladies les plus détectées</div>
+              <div className="cc-sub" style={{marginBottom:"14px"}}>Classement par fréquence</div>
+              {diseaseRank.length === 0
+                ? <div className="empty-box"><div className="e-icon">🔬</div><p>Aucune donnée</p></div>
+                : diseaseRank.map(([name, count], i) => (
+                  <div className="disease-rank-item" key={name}>
+                    <div className={`rank-num ${i===0?"top":""}`}>{i+1}</div>
+                    <div className="rank-name">{name}</div>
+                    <div className="rank-bar-bg">
+                      <div className="rank-bar-fill" style={{
+                        width:`${Math.round(count/maxD*100)}%`,
+                        background: i===0?"#ef4444":i===1?"#f59e0b":"#3b82f6"
+                      }}/>
+                    </div>
+                    <div className="rank-count" style={{
+                      color: i===0?"#ef4444":i===1?"#f59e0b":"#3b82f6"
+                    }}>{count}</div>
+                  </div>
+                ))
+              }
+            </div>
+
+            {/* Donut répartition */}
+            <div className="chart-card">
+              <div className="cc-title" style={{marginBottom:"2px"}}>🥧 Répartition des statuts</div>
+              <div className="cc-sub" style={{marginBottom:"8px"}}>Saine / Infectée / Critique</div>
+              {total === 0
+                ? <div className="empty-box"><div className="e-icon">🔬</div><p>Aucune donnée</p></div>
+                : <div style={{height:"190px"}}><Donut
+                    data={[healthy, sick, critical].filter((_,i)=>[healthy,sick,critical][i]>0)}
+                    labels={["Saines","Infectées","Critiques"].filter((_,i)=>[healthy,sick,critical][i]>0)}
+                    colors={["#1db954","#f59e0b","#ef4444"].filter((_,i)=>[healthy,sick,critical][i]>0)}
+                  /></div>
+              }
+            </div>
+
+            {/* Stats capteurs */}
+            <div className="chart-card">
+              <div className="cc-title" style={{marginBottom:"2px"}}>📡 État actuel ESP32</div>
+              <div className="cc-sub" style={{marginBottom:"14px"}}>Valeurs capteurs en temps réel</div>
+              {[
+                {label:"Température",  val:`${sensors.temp}°C`,  pct:Math.round((sensors.temp-10)/30*100), color:"#f59e0b", icon:"🌡️",
+                  status: sensors.temp<18?"Froid":sensors.temp>32?"Chaud":"Optimal"},
+                {label:"Humidité air", val:`${sensors.humidity}%`, pct:sensors.humidity, color:"#3b82f6", icon:"💧",
+                  status: sensors.humidity<40?"Sec":sensors.humidity>80?"Saturé":"Optimal"},
+                {label:"Humidité sol", val:`${sensors.soil}%`, pct:sensors.soil, color:"#1db954", icon:"🌱",
+                  status: sensors.soil<40?"Sec":sensors.soil>75?"Saturé":"Optimal"},
+                {label:"Luminosité",   val:`${sensors.light}%`,  pct:sensors.light, color:"#eab308", icon:"☀️",
+                  status: sensors.light<30?"Sombre":sensors.light>85?"Fort":"Optimal"},
+              ].map(s=>(
+                <div className="sensor-row" key={s.label}>
+                  <div className="sensor-head">
+                    <span className="sensor-name">{s.icon} {s.label}</span>
+                    <span className="sensor-val" style={{color:s.color}}>{s.val}</span>
+                  </div>
+                  <div className="sensor-bar">
+                    <div className="sensor-fill" style={{width:`${Math.min(100,s.pct)}%`, background:s.color}}/>
+                  </div>
+                  <div style={{fontSize:"0.65rem",color:s.status==="Optimal"?"#1db954":"#f59e0b",fontWeight:700,marginTop:"3px"}}>
+                    {s.status==="Optimal"?"✓ Optimal":"⚠ "+s.status}
+                  </div>
+                </div>
+              ))}
+              <div style={{marginTop:"12px",fontSize:"0.72rem",color:"var(--text3)",borderTop:"1px solid var(--border)",paddingTop:"10px"}}>
+                Confiance moy. IA : <strong style={{color:"var(--green)"}}>{avgConf2}%</strong>
+                {lastAnalysis && <span> · Dernier : <strong style={{color:"var(--text)"}}>{lastAnalysis.maladie}</strong></span>}
+              </div>
+            </div>
+          </div>
+        </>);
+      })()}
+
+    </div>
+  </div>);
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
